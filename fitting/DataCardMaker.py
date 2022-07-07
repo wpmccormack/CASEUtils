@@ -6,9 +6,10 @@ from array import array
 ROOT.RooMsgService.instance().setGlobalKillBelow(ROOT.RooFit.WARNING)
 
 class DataCardMaker:
-    def __init__(self,tag):
+    def __init__(self,tag,extraName=""):
         self.systematics=[]
         self.tag="JJ"+"_"+tag
+        self.extraName=extraName
         self.rootFile = ROOT.TFile("datacardInputs_%s.root"%self.tag,"RECREATE")
         self.rootFile.cd()
         self.w=ROOT.RooWorkspace("w","w")
@@ -24,7 +25,7 @@ class DataCardMaker:
       
     def makeCard(self):
 
-        f = open("datacard_"+self.tag+'.txt','w')
+        f = open("datacard_"+self.tag+self.extraName+'.txt','w')
         f.write('imax 1\n')
         f.write('jmax {n}\n'.format(n=len(self.contributions)-1))
         f.write('kmax *\n')
@@ -146,7 +147,21 @@ class DataCardMaker:
         f=ROOT.TFile(filename)
         #histogram=f.Get(histoName)
         #events=histogram.Integral()*self.luminosity*constant
+        events=1680.0*constant
+
+        self.contributions.append({'name':name,'pdf':pdfName,'ID':ID,'yield':events})
+        return events
+
+    def addFixedYieldFromFilev2(self,name,ID,filename,histoName,constant=1.0,mini=0,maxi=1e+9):
+        pdfName="_".join([name,self.tag])
+        pdfNorm="_".join([name,self.tag,"norm"])
+        f=ROOT.TFile(filename)
+        #histogram=f.Get(histoName)
+        #events=histogram.Integral()*self.luminosity*constant
         events=1680.0
+        
+        self.w.factory("{name}[{val},{mini},{maxi}]".format(name=pdfNorm,val=events,mini=mini,maxi=maxi))
+        self.w.var(pdfNorm).setConstant(1)
 
         self.contributions.append({'name':name,'pdf':pdfName,'ID':ID,'yield':events})
         return events

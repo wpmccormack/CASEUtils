@@ -1,7 +1,7 @@
 import os
 from Fitter import Fitter
 from DataCardMaker import DataCardMaker
-from Utils import load_h5_sig, load_h5_sb, truncate, apply_blinding
+from Utils import load_h5_sig, load_h5_sb, load_h5_fracSig, truncate, apply_blinding
 from Utils import f_test, calculateChi2, PlotFitResults, checkSBFit
 from Utils import check_rough_sig, roundTo
 from array import array
@@ -41,7 +41,7 @@ def fit_signalmodel(input_file, sig_file_name, mass, x_bins, fine_bins,
     histos_sig = ROOT.TH1F("mjj_sig", "mjj_sig",
                            len(bins_sig_fit) - 1, bins_sig_fit)
 
-    load_h5_sig(input_file, histos_sig, mass, requireWindow = False)
+    load_h5_sig(input_file, histos_sig, mass)
     sig_outfile = ROOT.TFile(sig_file_name, "RECREATE")
     fitter = Fitter(['mjj_fine'])
 
@@ -61,15 +61,15 @@ def fit_signalmodel(input_file, sig_file_name, mass, x_bins, fine_bins,
                                   plot_dir + "signal_fit.png")
 
     fitter.projection("model_s", "data", "mjj_fine",
-                      plot_dir + "signal_fit_log.png", 0, True)
+                      plot_dir + "signal_fit_log.png", 0, False)
 
     chi2 = fitter.projection("model_s", "data", "mjj_fine",
                              plot_dir + "signal_fit_binned.png",
-                             roobins_sig_fit)
+                             roobins_sig_fit, logy=False)
 
     fitter.projection("model_s", "data", "mjj_fine",
                       plot_dir + "signal_fit_log_binned.png",
-                      roobins_sig_fit, logy=True)
+                      roobins_sig_fit, logy=False)
 
     sig_outfile.cd()
     histos_sig.Write()
@@ -113,6 +113,82 @@ def fit_signalmodel(input_file, sig_file_name, mass, x_bins, fine_bins,
         return fitter
     else:
         return None
+
+
+def cardWriter(options,histos_sb,qcd_fname,nPars_QCD,sig_file_name,extraName="", fracSig=1.):
+    sb_fname = "sb_fit.root"
+    sb_outfile = ROOT.TFile(sb_fname, 'RECREATE')
+    sb_outfile.cd()
+    histos_sb.Write("mjj_sb")
+    sb_outfile.Close()
+    sig_data_name = 'mjj_sb'
+    if options.tag == None:
+        sb_label = "raw"
+    else:
+        sb_label = options.tag
+
+    card = DataCardMaker(sb_label,extraName)
+    if options.dcb_model:
+        if options.tag == None:
+            card.addDCBSignalShape('model_signal_mjj', 'mjj', sig_file_name,
+                                   {'CMS_scale_j': 1.0}, {'CMS_res_j': 1.0})
+        else:
+            card.addDCBSignalShape('model_signal_mjj', 'mjj', sig_file_name,
+                                   {'CMS_scale_j': 1.0}, {'CMS_res_j': 1.0})
+    else:
+        if options.tag == None:
+            card.addSignalShape('model_signal_mjj', 'mjj', sig_file_name,
+                                {'CMS_scale_j': 1.0}, {'CMS_res_j': 1.0})
+        else:
+            card.addSignalShape('model_signal_mjj', 'mjj', sig_file_name,
+                                {'CMS_scale_j': 1.0}, {'CMS_res_j': 1.0})
+    constant = options.sig_norm
+
+    if options.tag == None:
+        sig_norm = card.addFixedYieldFromFile('model_signal_mjj', 0, sig_file_name,
+                                              "mjj_sig", constant=constant)
+    else:
+        #sig_norm = card.addFloatingYield('model_signal_mjj', 0, sig_file_name, "mjj_sig", 0., 1000.)
+        sig_norm = card.addFixedYieldFromFile('model_signal_mjj', 0, sig_file_name,
+                                              "mjj_sig", constant=constant*fracSig)
+        #sig_norm = card.addFixedYieldFromFilev2('model_signal_mjj', 0, sig_file_name,
+        #                                      "mjj_sig", constant=constant)
+    #sig_norm = card.addFloatingYield('model_signal_mjj', 0, sig_file_name,
+    #                                 "mjj_sig", constant=False)
+    card.addSystematic("CMS_scale_j", "param", [0.0, 0.012])
+    card.addSystematic("CMS_res_j", "param", [0.0, 0.08])
+    if((not (options.tag == None)) and (not options.corner)):
+        if(not extraName=="_FLOAT"):
+            card.addSystematic("model_signal_mjj_"+str(options.tag)+"_norm", "param", [1.0, .1])
+        card.addSystematic("model_signal_mjj_"+str(options.tag)+"_norm", "rateParam", 1.0, bin="JJ_"+str(options.tag), process="model_signal_mjj", variables="[0.,2.]")
+
+    if options.tag == None:
+        card.addQCDShapeNoTag('model_qcd_mjj', 'mjj', qcd_fname, nPars_QCD)
+        card.addFloatingYield('model_qcd_mjj', 1, sb_fname, "mjj_sb")
+    else:
+        card.addQCDShape('model_qcd_mjj', 'mjj', qcd_fname, nPars_QCD)
+        card.addFloatingYield('model_qcd_mjj', 1, sb_fname, "mjj_sb")
+    for i in range(1, nPars_QCD + 1):
+        if options.tag == None:
+            card.addSystematic("CMS_JJ_p%i" % i, "flatParam", [])
+        else:
+            card.addSystematic("CMS_JJ_p%i_JJ_" % i + str(options.tag), "flatParam", [])
+    
+    if options.tag == None:
+        card.addSystematic("model_qcd_mjj_JJ_norm", "flatParam", [])
+    else:
+        card.addSystematic("model_qcd_mjj_JJ_"+str(options.tag)+"_norm", "flatParam", [])
+        #card.addSystematic("model_signal_mjj_JJ_"+str(options.tag)+"_norm", "flatParam", [])
+
+    card.importBinnedData("sb_fit.root", sig_data_name,
+                          ["mjj"], 'data_obs', 1.0)
+
+    if(options.sig_norm_unc > 0):
+        card.addSystematic("SigEff", "lnN", values = {"model_signal_mjj" : 1. + options.sig_norm_unc})
+    card.makeCard()
+    card.delete()
+    
+    return sig_norm
 
 
 def dijetfit(options):
@@ -237,7 +313,7 @@ def dijetfit(options):
 
         chi2_fine = fitter_QCD.projection(
             model_name, data_name, "mjj_fine",
-            plot_dir + str(nPars) + "par_qcd_fit.png", 0, True)
+            plot_dir + str(nPars) + "par_qcd_fit.png", 0, False)
 
         #chi2_binned = fitter_QCD.projection(
         #     model_name, data_name, "mjj_fine",
@@ -298,10 +374,7 @@ def dijetfit(options):
         hpull = frame.pullHist(data_name, model_name, useBinAverage)
         framePulls.addPlotable(hpull, "X0 P E1")
 
-        dhist = ROOT.RooHist(frame.findObject(data_name, ROOT.RooHist.Class()))
-
-
-        my_chi2, my_ndof = calculateChi2(hpull, nPars, ranges=chi2_range, excludeZeros = True, dataHist = dhist)
+        my_chi2, my_ndof = calculateChi2(hpull, nPars, ranges=chi2_range)
         my_prob = ROOT.TMath.Prob(my_chi2, my_ndof)
         PlotFitResults(frame, fres.GetName(), nPars, framePulls, data_name,
                        model_name, my_chi2, my_ndof,
@@ -354,30 +427,69 @@ def dijetfit(options):
     histos_sb.Write("mjj_sb")
     sb_outfile.Close()
     sig_data_name = 'mjj_sb'
-    sb_label = "raw"
+    fracSig = 1.0
+    if options.tag == None:
+        sb_label = "raw"
+    else:
+        sb_label = options.tag
+        fracSig = load_h5_fracSig(options.inputFile)
 
+    sig_norm = cardWriter(options,histos_sb,qcd_fname,nPars_QCD,sig_file_name,"",fracSig)
+    if(not options.tag == None):
+        sig_norm2 = cardWriter(options,histos_sb,qcd_fname,nPars_QCD,sig_file_name,"_FLOAT")
+    """
     card = DataCardMaker(sb_label)
     if options.dcb_model:
-        card.addDCBSignalShape('model_signal_mjj', 'mjj', sig_file_name,
-                               {'CMS_scale_j': 1.0}, {'CMS_res_j': 1.0})
+        if options.tag == None:
+            card.addDCBSignalShape('model_signal_mjj', 'mjj', sig_file_name,
+                                   {'CMS_scale_j': 1.0}, {'CMS_res_j': 1.0})
+        else:
+            card.addDCBSignalShape('model_signal_mjj', 'mjj', sig_file_name,
+                                   {'CMS_scale_j': 1.0}, {'CMS_res_j': 1.0})
     else:
-        card.addSignalShape('model_signal_mjj', 'mjj', sig_file_name,
-                            {'CMS_scale_j': 1.0}, {'CMS_res_j': 1.0})
+        if options.tag == None:
+            card.addSignalShape('model_signal_mjj', 'mjj', sig_file_name,
+                                {'CMS_scale_j': 1.0}, {'CMS_res_j': 1.0})
+        else:
+            card.addSignalShape('model_signal_mjj', 'mjj', sig_file_name,
+                                {'CMS_scale_j': 1.0}, {'CMS_res_j': 1.0})
     constant = options.sig_norm
 
-    sig_norm = card.addFixedYieldFromFile('model_signal_mjj', 0, sig_file_name,
-                                          "mjj_sig", constant=constant)
+    if options.tag == None:
+        sig_norm = card.addFixedYieldFromFile('model_signal_mjj', 0, sig_file_name,
+                                              "mjj_sig", constant=constant)
+    else:
+        #sig_norm = card.addFloatingYield('model_signal_mjj', 0, sig_file_name, "mjj_sig", 0., 1000.)
+        sig_norm = card.addFixedYieldFromFile('model_signal_mjj', 0, sig_file_name,
+                                              "mjj_sig", constant=constant)
+        #sig_norm = card.addFixedYieldFromFilev2('model_signal_mjj', 0, sig_file_name,
+        #                                      "mjj_sig", constant=constant)
     #sig_norm = card.addFloatingYield('model_signal_mjj', 0, sig_file_name,
     #                                 "mjj_sig", constant=False)
     card.addSystematic("CMS_scale_j", "param", [0.0, 0.012])
     card.addSystematic("CMS_res_j", "param", [0.0, 0.08])
+    if(not (options.tag == None)):
+        #card.addSystematic("model_signal_mjj_"+str(options.tag)+"_norm", "param", [1.0, 2.0])
+        card.addSystematic("model_signal_mjj_"+str(options.tag)+"_norm", "rateParam", "1.0 [0.,2.]", bin="JJ_"+str(options.tag), process="model_signal_mjj")
 
-    card.addQCDShapeNoTag('model_qcd_mjj', 'mjj', qcd_fname, nPars_QCD)
-    card.addFloatingYield('model_qcd_mjj', 1, sb_fname, "mjj_sb")
+    if options.tag == None:
+        card.addQCDShapeNoTag('model_qcd_mjj', 'mjj', qcd_fname, nPars_QCD)
+        card.addFloatingYield('model_qcd_mjj', 1, sb_fname, "mjj_sb")
+    else:
+        card.addQCDShape('model_qcd_mjj', 'mjj', qcd_fname, nPars_QCD)
+        card.addFloatingYield('model_qcd_mjj', 1, sb_fname, "mjj_sb")
     for i in range(1, nPars_QCD + 1):
-        card.addSystematic("CMS_JJ_p%i" % i, "flatParam", [])
+        if options.tag == None:
+            card.addSystematic("CMS_JJ_p%i" % i, "flatParam", [])
+        else:
+            card.addSystematic("CMS_JJ_p%i_JJ_" % i + str(options.tag), "flatParam", [])
+    
+    if options.tag == None:
+        card.addSystematic("model_qcd_mjj_JJ_norm", "flatParam", [])
+    else:
+        card.addSystematic("model_qcd_mjj_JJ_"+str(options.tag)+"_norm", "flatParam", [])
+        #card.addSystematic("model_signal_mjj_JJ_"+str(options.tag)+"_norm", "flatParam", [])
 
-    card.addSystematic("model_qcd_mjj_JJ_norm", "flatParam", [])
     card.importBinnedData("sb_fit.root", sig_data_name,
                           ["mjj"], 'data_obs', 1.0)
 
@@ -385,19 +497,30 @@ def dijetfit(options):
         card.addSystematic("SigEff", "lnN", values = {"model_signal_mjj" : 1. + options.sig_norm_unc})
     card.makeCard()
     card.delete()
-
-    cmd = (
-        "text2workspace.py datacard_JJ_{l2}.txt "
-        + "-o workspace_JJ_{l1}_{l2}.root "
-        + "&& combine -M Significance workspace_JJ_{l1}_{l2}.root "
-        + "-m {mass} -n significance_{l1}_{l2} "
-        + "&& combine -M Significance workspace_JJ_{l1}_{l2}.root "
-        + "-m {mass} --pvalue -n pvalue_{l1}_{l2}"
-        + "&& combine -M AsymptoticLimits workspace_JJ_{l1}_{l2}.root "
-        + "-m {mass} -n lim_{l1}_{l2}"
-        ).format(mass=mass, l1=label, l2=sb_label)
+    """
+    if options.tag == None:
+        cmd = (
+            "text2workspace.py datacard_JJ_{l2}.txt "
+            + "-o workspace_JJ_{l1}_{l2}.root "
+            + "&& combine -M Significance workspace_JJ_{l1}_{l2}.root "
+            + "-m {mass} -n significance_{l1}_{l2} "
+            + "&& combine -M Significance workspace_JJ_{l1}_{l2}.root "
+            + "-m {mass} --pvalue -n pvalue_{l1}_{l2} "
+            + "&& combine -M AsymptoticLimits workspace_JJ_{l1}_{l2}.root "
+            + "-m {mass} -n lim_{l1}_{l2}"
+            ).format(mass=mass, l1=label, l2=sb_label)
+    else:
+        cmd = (
+            "text2workspace.py datacard_JJ_{l2}_FLOAT.txt "
+            + "-o workspace_JJ_{l1}_{l2}.root "
+            ).format(mass=mass, l1=label, l2=sb_label)
     print(cmd)
     os.system(cmd)
+    if(not options.tag == None):
+        sbfit_chi2, sbfit_ndof = checkSBFit('workspace_JJ_{l1}_{l2}.root'.format(l1=label, l2=sb_label),
+                                            sb_label, roobins, label + "_" + sb_label, nPars_QCD, plot_dir)
+        return 0
+
     sbfit_chi2, sbfit_ndof = checkSBFit('workspace_JJ_{l1}_{l2}.root'.format(l1=label, l2=sb_label),
                sb_label, roobins, label + "_" + sb_label, nPars_QCD, plot_dir)
 
@@ -451,7 +574,7 @@ def dijetfit(options):
     print("p-value is %.3f \n" % pval)
 
     # TODO: Comment back in
-    check_rough_sig(options.inputFile, options.mass*0.9, options.mass*1.1)
+    #check_rough_sig(options.inputFile, options.mass*0.9, options.mass*1.1)
     f_signif.Close()
     f_limit.Close()
     f_pval.Close()
@@ -508,6 +631,10 @@ def fitting_options():
                       help="Where to put the plots")
     parser.add_option("-l", "--label", dest="label", default='test',
                       help="Label for file names")
+    parser.add_option("-t", "--tag", dest="tag", default=None,
+                      help="Label for file names")
+    parser.add_option("-c", "--corner", dest="corner", default=False,
+                      help="Is this the corner bin?")
     parser.add_option("-b", "--blinded", dest="blinded", action="store_true",
                       default=False,
                       help="Blinding the signal region for the fit.")

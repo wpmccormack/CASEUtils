@@ -107,16 +107,19 @@ def truncate(binning,mmin,mmax):
     return res
 
 
-def PlotFitResults(frame,fitErrs,nPars,pulls,data_name,pdf_names,chi2,ndof,canvname, plot_dir, has_sig = False):
+def PlotFitResults(frame,fitErrs,nPars,pulls,data_name,pdf_names,chi2,ndof,canvname, plot_dir, has_sig = False, dolog=True):
 
     c1 =ROOT.TCanvas("c1","",800,800)
-    c1.SetLogy()
+    if(dolog):
+        c1.SetLogy()
     c1.Divide(1,2,0,0,0)
-    c1.SetLogy()
+    if(dolog):
+        c1.SetLogy()
     c1.cd(1)
     p11_1 = c1.GetPad(1)
     p11_1.SetPad(0.01,0.26,0.99,0.98)
-    p11_1.SetLogy()
+    if(dolog):
+        p11_1.SetLogy()
     p11_1.SetRightMargin(0.05)
 
     p11_1.SetTopMargin(0.1)
@@ -128,7 +131,8 @@ def PlotFitResults(frame,fitErrs,nPars,pulls,data_name,pdf_names,chi2,ndof,canvn
     frame.GetYaxis().SetTitleSize(0.06)
     frame.GetYaxis().SetTitleOffset(0.98)
     frame.SetMinimum(0.2)
-    frame.SetMaximum(1E7)
+    #frame.SetMaximum(1E7)
+    frame.SetMaximum(1E4)
     frame.SetName("mjjFit")
     frame.GetYaxis().SetTitle("Events / 100 GeV")
     frame.SetTitle("")
@@ -219,7 +223,7 @@ def PlotFitResults(frame,fitErrs,nPars,pulls,data_name,pdf_names,chi2,ndof,canvn
     c1.SaveAs(plot_dir + canvname)
     #c1.SaveAs(canvname.replace("png","C"),"C")
 
-def calculateChi2(g_pulls, nPars, ranges = None, excludeZeros = True, dataHist = None):
+def calculateChi2(g_pulls, nPars, ranges = None):
      
     NumberOfVarBins = 0
     NumberOfObservations_VarBin = 0
@@ -228,8 +232,6 @@ def calculateChi2(g_pulls, nPars, ranges = None, excludeZeros = True, dataHist =
 
     a_x = array('d', [0.])
     a_val = array('d', [0.])
-    a_data = array('d', [0.])
-    already_zero = False
     for p in range (0,g_pulls.GetN()):
     
         g_pulls.GetPoint(p, a_x, a_val)
@@ -245,14 +247,6 @@ def calculateChi2(g_pulls, nPars, ranges = None, excludeZeros = True, dataHist =
                 if(x >= range_[0] and x<= range_[1]):
                     add = True
          
-        if(excludeZeros and dataHist is not None):
-            dataHist.GetPoint(p, a_x, a_data)
-            if(a_data[0] <= 0.):
-                #print("Data %.0f for x = %.0f" % (a_data[0], a_x[0]))
-                #include 'first' zero point, exclude rest
-                if(already_zero): add = False
-                else: already_zero = True
-
         if(add):
             NumberOfObservations_VarBin+=1
             chi2_VarBin += pow(pull,2)
@@ -318,7 +312,9 @@ def fill_hist(v, h, event_num = None):
     #h.Print("range")
 
 
-
+def load_h5_fracSig(h_file):
+    with h5py.File(h_file, "r") as f:
+        return np.array(f['fracSig'][0])
 
 
 def load_h5_sb(h_file, hist, correctStats=False, sb1_edge = -1., sb2_edge = -1.):
@@ -343,7 +339,7 @@ def load_h5_bkg(h_file, hist, correctStats = False):
     fill_hist(mjj[mask], hist, event_num)
 
 
-def load_h5_sig(h_file, hist, sig_mjj, requireWindow = False, correctStats =False, mixed = False):
+def load_h5_sig(h_file, hist, sig_mjj, correctStats =False):
     event_num = None
     with h5py.File(h_file, "r") as f:
         try:
@@ -352,10 +348,7 @@ def load_h5_sig(h_file, hist, sig_mjj, requireWindow = False, correctStats =Fals
             mjj = f['mjj'][()]
 
         num_evts = mjj.shape[0]
-        if(mixed):
-            is_sig = f['truth_label'][()].flatten()
-        else: 
-            is_sig = np.ones_like(mjj)
+        is_sig = f['truth_label'][()].flatten()
 
 
         if(is_sig.shape[0] != mjj.shape[0]):
@@ -366,8 +359,7 @@ def load_h5_sig(h_file, hist, sig_mjj, requireWindow = False, correctStats =Fals
             event_num = f['event_num'][()]
 
 
-    if(requireWindow): mask = (mjj > 0.8*sig_mjj) & (mjj < 1.2*sig_mjj) & (is_sig > 0.9)
-    else: mask = mjj > 0.
+    mask = (mjj > 0.8*sig_mjj) & (mjj < 1.2*sig_mjj) & (is_sig > 0.9)
     if(correctStats): event_num = event_num[mask]
     fill_hist(mjj[mask], hist, event_num)
 
@@ -436,12 +428,10 @@ def checkSBFit(filename,label,roobins,plotname, nPars, plot_dir):
     frame3.addPlotable(hpull,"X0 P E1")
     
     data.plotOn(frame,ROOT.RooFit.DataError(ROOT.RooAbsData.Poisson), ROOT.RooFit.Binning(roobins),ROOT.RooFit.Name("data_obs"),ROOT.RooFit.XErrorSize(0))
-    dhist = ROOT.RooHist(frame.findObject('data_obs', ROOT.RooHist.Class()))
-    chi2, ndof = calculateChi2(hpull, nPars + 1, excludeZeros = True, dataHist = dhist)
-    #chi2,ndof = calculateChi2(hpull, nPars +1)
+    chi2,ndof = calculateChi2(hpull, nPars +1)
 
     pdf_names = ["model_s"] 
-    PlotFitResults(frame,fres.GetName(),nPars+1,frame3,"data_obs", pdf_names,chi2,ndof,'sbFit_'+plotname, plot_dir, has_sig = True)
+    PlotFitResults(frame,fres.GetName(),nPars+1,frame3,"data_obs", pdf_names,chi2,ndof,'sbFit_'+plotname, plot_dir, has_sig = True, dolog = False)
 
     print "chi2,ndof are", chi2, ndof
     return chi2, ndof
