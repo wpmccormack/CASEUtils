@@ -107,7 +107,7 @@ def truncate(binning,mmin,mmax):
     return res
 
 
-def PlotFitResults(frame,fitErrs,nPars,pulls,data_name,pdf_names,chi2,ndof,canvname, plot_dir, has_sig = False, dolog=True):
+def PlotFitResults(frame,fitErrs,nPars,pulls,data_name,pdf_names,chi2,ndof,canvname, plot_dir, has_sig = False, dolog=True, setMax = 1E4):
 
     c1 =ROOT.TCanvas("c1","",800,800)
     if(dolog):
@@ -132,7 +132,7 @@ def PlotFitResults(frame,fitErrs,nPars,pulls,data_name,pdf_names,chi2,ndof,canvn
     frame.GetYaxis().SetTitleOffset(0.98)
     frame.SetMinimum(0.2)
     #frame.SetMaximum(1E7)
-    frame.SetMaximum(1E4)
+    frame.SetMaximum(setMax)
     frame.SetName("mjjFit")
     frame.GetYaxis().SetTitle("Events / 100 GeV")
     frame.SetTitle("")
@@ -317,6 +317,11 @@ def load_h5_fracSig(h_file):
         return np.array(f['fracSig'][0])
 
 
+def load_h5_numEv(h_file):
+    with h5py.File(h_file, "r") as f:
+        return np.array(f['numEv'][0])
+
+
 def load_h5_sb(h_file, hist, correctStats=False, sb1_edge = -1., sb2_edge = -1.):
     event_num = None
     with h5py.File(h_file, "r") as f:
@@ -376,7 +381,7 @@ def check_rough_sig(h_file, m_low, m_high):
     print("Mjj window %f to %f " % (m_low, m_high))
     print("S = %i, B = %i, S/B %f, sigificance ~ %.1f " % (S, B, float(S)/B, S/np.sqrt(B)))
     
-def checkSBFit(filename,label,roobins,plotname, nPars, plot_dir):
+def checkSBFit(filename,label,roobins,plotname, nPars, plot_dir, numEv = 10000):
     
     fin = ROOT.TFile.Open(filename,'READ')
     workspace = fin.w
@@ -431,7 +436,7 @@ def checkSBFit(filename,label,roobins,plotname, nPars, plot_dir):
     chi2,ndof = calculateChi2(hpull, nPars +1)
 
     pdf_names = ["model_s"] 
-    PlotFitResults(frame,fres.GetName(),nPars+1,frame3,"data_obs", pdf_names,chi2,ndof,'sbFit_'+plotname, plot_dir, has_sig = True, dolog = False)
+    PlotFitResults(frame,fres.GetName(),nPars+1,frame3,"data_obs", pdf_names,chi2,ndof,'sbFit_'+plotname, plot_dir, has_sig = True, dolog = False, setMax = float(numEv)/5.)
 
     print "chi2,ndof are", chi2, ndof
     return chi2, ndof

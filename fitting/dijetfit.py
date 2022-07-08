@@ -1,7 +1,7 @@
 import os
 from Fitter import Fitter
 from DataCardMaker import DataCardMaker
-from Utils import load_h5_sig, load_h5_sb, load_h5_fracSig, truncate, apply_blinding
+from Utils import load_h5_sig, load_h5_sb, load_h5_fracSig, load_h5_numEv, truncate, apply_blinding
 from Utils import f_test, calculateChi2, PlotFitResults, checkSBFit
 from Utils import check_rough_sig, roundTo
 from array import array
@@ -516,9 +516,14 @@ def dijetfit(options):
             ).format(mass=mass, l1=label, l2=sb_label)
     print(cmd)
     os.system(cmd)
+
+    numEv = 10000
+    if(not options.tag == None):
+        numEv = load_h5_numEv(options.inputFile)
+
     if(not options.tag == None):
         sbfit_chi2, sbfit_ndof = checkSBFit('workspace_JJ_{l1}_{l2}.root'.format(l1=label, l2=sb_label),
-                                            sb_label, roobins, label + "_" + sb_label, nPars_QCD, plot_dir)
+                                            sb_label, roobins, label + "_" + sb_label, nPars_QCD, plot_dir, numEv)
         return 0
 
     sbfit_chi2, sbfit_ndof = checkSBFit('workspace_JJ_{l1}_{l2}.root'.format(l1=label, l2=sb_label),
