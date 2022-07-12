@@ -149,6 +149,7 @@ def cardWriter(options,histos_sb,qcd_fname,nPars_QCD,sig_file_name,extraName="",
                                               "mjj_sig", constant=constant)
     else:
         #sig_norm = card.addFloatingYield('model_signal_mjj', 0, sig_file_name, "mjj_sig", 0., 1000.)
+        constant = constant*10.
         sig_norm = card.addFixedYieldFromFile('model_signal_mjj', 0, sig_file_name,
                                               "mjj_sig", constant=constant*fracSig)
         #sig_norm = card.addFixedYieldFromFilev2('model_signal_mjj', 0, sig_file_name,
@@ -203,7 +204,11 @@ def dijetfit(options):
     fine_bin_size = 4
     mass = options.mass 
 
-    binsx = [1460, 1530, 1607, 1687, 1770, 1856, 1945, 2037, 2132, 2231, 2332, 2438,
+    #binsx = [1460, 1530, 1607, 1687, 1770, 1856, 1945, 2037, 2132, 2231, 2332, 2438,
+    #         2546, 2659, 2775, 2895, 3019, 3147, 3279, 3416, 3558, 3704, 3854,
+    #         4010, 4171, 4337, 4509, 4686, 4869, 5058, 5253, 5500, 5663, 5877,
+    #         6099, 6328, 6564, 6808]
+    binsx = [2132, 2231, 2332, 2438,
              2546, 2659, 2775, 2895, 3019, 3147, 3279, 3416, 3558, 3704, 3854,
              4010, 4171, 4337, 4509, 4686, 4869, 5058, 5253, 5500, 5663, 5877,
              6099, 6328, 6564, 6808]

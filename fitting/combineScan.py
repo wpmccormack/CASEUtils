@@ -67,17 +67,19 @@ if __name__ == "__main__":
     if(massgaps < 0):
         massgaps = int(input("step size between masses "))
 
-    if(os.path.isdir("./"+dirName)):
+    newDirName = dirName+'_'+sigTemplate
+
+    if(os.path.isdir("./"+newDirName)):
         redo = raw_input("Directory already exists.  Do you want to overwrite? [y/n] ")
         if(redo == "y" or redo == "Y"):
-            shutil.rmtree("./"+dirName)
-            os.system("cp -r "+fullPathToH5s+" .")
-            os.chdir("./"+dirName)
+            shutil.rmtree("./"+newDirName)
+            os.system("cp -r "+fullPathToH5s+" ./"+newDirName)
+            os.chdir("./"+newDirName)
         else:
             exit()
     else:
-        os.system("cp -r "+fullPathToH5s+" .")
-        os.chdir("./"+dirName)
+        os.system("cp -r "+fullPathToH5s+" ./"+newDirName)
+        os.chdir("./"+newDirName)
 
     os.system("ln -s ../*.py .")
     os.system("ln -s ../"+sigTemplate+"/ .")
