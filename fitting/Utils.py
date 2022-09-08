@@ -250,6 +250,7 @@ def calculateChi2(g_pulls, nPars, ranges = None):
         if(add):
             NumberOfObservations_VarBin+=1
             chi2_VarBin += pow(pull,2)
+            print(p, pow(pull,2), chi2_VarBin)
             
     ndf_VarBin = NumberOfObservations_VarBin - nPars
     return chi2_VarBin,ndf_VarBin

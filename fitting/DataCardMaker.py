@@ -6,11 +6,12 @@ from array import array
 ROOT.RooMsgService.instance().setGlobalKillBelow(ROOT.RooFit.WARNING)
 
 class DataCardMaker:
-    def __init__(self,tag,extraName=""):
+    def __init__(self,tag,extraName="",signalOnly=False):
         self.systematics=[]
         self.tag="JJ"+"_"+tag
         self.extraName=extraName
-        self.rootFile = ROOT.TFile("datacardInputs_%s.root"%self.tag,"RECREATE")
+        self.signalOnly=signalOnly
+        self.rootFile = ROOT.TFile("datacardInputs_{filetag}.root".format(filetag = (self.tag if(not signalOnly) else self.tag+"_signalOnly")),"RECREATE")
         self.rootFile.cd()
         self.w=ROOT.RooWorkspace("w","w")
         self.luminosity = 1.0
@@ -25,86 +26,107 @@ class DataCardMaker:
       
     def makeCard(self):
 
-        f = open("datacard_"+self.tag+self.extraName+'.txt','w')
-        f.write('imax 1\n')
-        f.write('jmax {n}\n'.format(n=len(self.contributions)-1))
-        f.write('kmax *\n')
-        f.write('-------------------------\n')
-        for c in self.contributions:
-            f.write('shapes {name} {channel} {file}.root w:{pdf}\n'.format(name=c['name'],channel=self.tag,file="datacardInputs_"+self.tag,pdf=c['pdf']))
-        f.write('shapes {name} {channel} {file}.root w:{name}\n'.format(name="data_obs",channel=self.tag,file="datacardInputs_"+self.tag))
-        f.write('-------------------------\n')
-        f.write('bin '+self.tag+'\n')
-        f.write('observation  -1\n')
-        f.write('-------------------------\n')
-        f.write('bin\t') 
-
-        for shape in self.contributions: f.write(self.tag+'\t')
-        f.write('\n')
-
-        #Sort the shapes by ID 
- 
-        shapes = sorted(self.contributions,key=lambda x: x['ID'])
-        #print names
-        f.write('process\t')
-        for shape in shapes:
-            f.write(shape['name']+'\t')
-        f.write('\n')
-
-        #Print ID
-        f.write('process\t')
-        for shape in shapes:
-            f.write(str(shape['ID'])+'\t')
-        f.write('\n')
-
-        #print rates
-        f.write('rate\t')
-        for shape in shapes:
-            f.write(str(shape['yield'])+'\t')
-        f.write('\n')
-
-
-        #Now systematics
-        for syst in self.systematics:
-            if syst['kind'] == 'param':
-                f.write(syst['name']+'\t'+'param\t' +str(syst['values'][0])+'\t'+str(syst['values'][1])+'\n')
-            elif syst['kind'] == 'flatParam':
-                f.write(syst['name']+'\t'+'flatParam\n')
-            elif 'rateParam' in syst['kind']:
-                line = syst['name']+'\t'+str(syst['kind'])+"\t"+str(syst['bin'])+"\t"+str(syst['process'])+"\t"+str(syst['values'])+"\t"+str(syst['variables'])
-                line+='\n' 
-                f.write(line)
-                
-            elif syst['kind'] == 'discrete':
-                f.write(syst['name']+'\t'+'discrete\n')
-
-            elif syst['kind'] == 'lnN' :
-                f.write(syst['name']+'\t'+ 'lnN\t' )
-                for shape in shapes:
-                    has=False
-                    for name,v in syst['values'].iteritems():
-                        if shape['name']==name:
-                            f.write(str(v)+'\t' )
-                            has=True
-                            break;
-                    if not has:
-                            f.write('-\t' )
-                f.write('\n' )
-            elif syst['kind'] == 'lnU': 
-                f.write(syst['name']+'\t'+ 'lnU\t' )
-                for shape in shapes:
-                    has=False
-                    for name,v in syst['values'].iteritems():
-                        if shape['name']==name:
-                            f.write(str(v)+'\t' )
-                            has=True
-                            break;
-                    if not has:
-                            f.write('-\t' )
-                f.write('\n' )  
+        if(not self.signalOnly):
+            f = open("datacard_"+self.tag+self.extraName+'.txt','w')
+            f.write('imax 1\n')
+            f.write('jmax {n}\n'.format(n=len(self.contributions)-1))
+            f.write('kmax *\n')
+            f.write('-------------------------\n')
+            for c in self.contributions:
+                if(self.signalOnly and "signal" in c['name']):
+                    f.write('shapes {name} {channel} {file}.root w:{pdf}\n'.format(name=c['name'],channel=self.tag,file="datacardInputs_"+self.tag+"_signalOnly",pdf=c['pdf']))
+                else:
+                    f.write('shapes {name} {channel} {file}.root w:{pdf}\n'.format(name=c['name'],channel=self.tag,file="datacardInputs_"+self.tag,pdf=c['pdf']))
+            f.write('shapes {name} {channel} {file}.root w:{name}\n'.format(name="data_obs",channel=self.tag,file="datacardInputs_"+self.tag))
+            f.write('-------------------------\n')
+            f.write('bin '+self.tag+'\n')
+            f.write('observation  -1\n')
+            f.write('-------------------------\n')
+            f.write('bin\t') 
+            
+            for shape in self.contributions: f.write(self.tag+'\t')
+            f.write('\n')
+            
+            #Sort the shapes by ID 
+            
+            shapes = sorted(self.contributions,key=lambda x: x['ID'])
+            #print names
+            f.write('process\t')
+            for shape in shapes:
+                f.write(shape['name']+'\t')
+            f.write('\n')
+            
+            #Print ID
+            f.write('process\t')
+            for shape in shapes:
+                f.write(str(shape['ID'])+'\t')
+            f.write('\n')
+            
+            #print rates
+            f.write('rate\t')
+            for shape in shapes:
+                f.write(str(shape['yield'])+'\t')
+            f.write('\n')
+            
+            
+            #Now systematics
+            for syst in self.systematics:
+                if syst['kind'] == 'param':
+                    f.write(syst['name']+'\t'+'param\t' +str(syst['values'][0])+'\t'+str(syst['values'][1])+'\n')
+                elif syst['kind'] == 'flatParam':
+                    f.write(syst['name']+'\t'+'flatParam\n')
+                elif 'rateParam' in syst['kind']:
+                    line = syst['name']+'\t'+str(syst['kind'])+"\t"+str(syst['bin'])+"\t"+str(syst['process'])+"\t"+str(syst['values'])+"\t"+str(syst['variables'])
+                    line+='\n' 
+                    f.write(line)
+                    
+                elif syst['kind'] == 'discrete':
+                    f.write(syst['name']+'\t'+'discrete\n')
+                    
+                elif syst['kind'] == 'lnN' :
+                    f.write(syst['name']+'\t'+ 'lnN\t' )
+                    for shape in shapes:
+                        has=False
+                        for name,v in syst['values'].iteritems():
+                            if shape['name']==name:
+                                f.write(str(v)+'\t' )
+                                has=True
+                                break;
+                            if not has:
+                                f.write('-\t' )
+                    f.write('\n' )
+                elif syst['kind'] == 'lnU': 
+                    f.write(syst['name']+'\t'+ 'lnU\t' )
+                    for shape in shapes:
+                        has=False
+                        for name,v in syst['values'].iteritems():
+                            if shape['name']==name:
+                                f.write(str(v)+'\t' )
+                                has=True
+                                break;
+                            if not has:
+                                f.write('-\t' )
+                    f.write('\n' )
                         
-        f.close()
+            f.close()
 
+        else:
+            replacedline = ""
+            replacementline = ""
+            for c in self.contributions:
+                if("signal" in c['name']):
+                    replacedline = 'shapes {name} {channel} {file}.root w:{pdf}'.format(name=c['name'],channel=self.tag,file="datacardInputs_"+self.tag,pdf=c['pdf'])
+                    replacementline = 'shapes {name} {channel} {file}.root w:{pdf}'.format(name=c['name'],channel=self.tag,file="datacardInputs_"+self.tag+"_signalOnly",pdf=c['pdf'])
+            f = open("datacard_"+self.tag+self.extraName+'.txt','r')
+            replacement = ""
+            for line in f:
+                line = line.strip()
+                changes = line.replace(replacedline, replacementline)
+                replacement = replacement + changes + "\n"
+            f.close()
+            fout = open("datacard_"+self.tag+self.extraName+'.txt', "w")
+            fout.write(replacement)
+            fout.close()
 
         self.rootFile.cd()
         self.w.Write("w",0,2000000000)
@@ -365,6 +387,12 @@ class DataCardMaker:
             ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1_%s"%self.tag), self.w.var("CMS_JJ_p2_%s"%self.tag), self.w.var("CMS_JJ_p3_%s"%self.tag)))
         elif nPars==4: model = ROOT.RooGenericPdf(pdfName, "pow(1-@0/13000., @1)/ ( pow(@0/13000., @2+@3*log(@0/13000.)+@4*pow(log(@0/13000.),2)) )", 
             ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1_%s"%self.tag), self.w.var("CMS_JJ_p2_%s"%self.tag), self.w.var("CMS_JJ_p3_%s"%self.tag), self.w.var("CMS_JJ_p4_%s"%self.tag)))
+        elif nPars==6: model = ROOT.RooGenericPdf(pdfName, "(0.5*tanh((@0-@6)/@5) + .5)*pow(1-@0/13000., @1)/ ( pow(@0/13000., @2+@3*log(@0/13000.)+@4*pow(log(@0/13000.),2)) )", ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1_%s"%self.tag), self.w.var("CMS_JJ_p2_%s"%self.tag), self.w.var("CMS_JJ_p3_%s"%self.tag), self.w.var("CMS_JJ_p4_%s"%self.tag), self.w.var("CMS_JJ_p5_%s"%self.tag), self.w.var("CMS_JJ_p6_%s"%self.tag)))
+        elif nPars==5: model = ROOT.RooGenericPdf(pdfName, "pow(1-@0/13000., @1)/ ( pow(@0/13000., @2+@3*log(@0/13000.)+@4*pow(log(@0/13000.),2)+@5*pow(log(@0/13000.),3)) )", 
+            ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1_%s"%self.tag), self.w.var("CMS_JJ_p2_%s"%self.tag), self.w.var("CMS_JJ_p3_%s"%self.tag), self.w.var("CMS_JJ_p4_%s"%self.tag), self.w.var("CMS_JJ_p5_%s"%self.tag)))
+        #elif nPars==6: model = ROOT.RooGenericPdf(pdfName, "pow(1-@0/13000., @1)/ ( pow(@0/13000., @2+@3*log(@0/13000.)+@4*pow(log(@0/13000.),2)+@5*pow(log(@0/13000.),3)+@6*pow(log(@0/13000.),4)) )", ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1_%s"%self.tag), self.w.var("CMS_JJ_p2_%s"%self.tag), self.w.var("CMS_JJ_p3_%s"%self.tag), self.w.var("CMS_JJ_p4_%s"%self.tag), self.w.var("CMS_JJ_p5_%s"%self.tag), self.w.var("CMS_JJ_p6_%s"%self.tag)))
+        elif nPars==7: model = ROOT.RooGenericPdf(pdfName, "@1+@2*@0+@3*pow(@0,2)+@4*pow(@0,3)+@5*pow(@0,4)+@6*pow(@0,5)+@7*pow(@0,6)", 
+            ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1_%s"%self.tag), self.w.var("CMS_JJ_p2_%s"%self.tag), self.w.var("CMS_JJ_p3_%s"%self.tag), self.w.var("CMS_JJ_p4_%s"%self.tag), self.w.var("CMS_JJ_p5_%s"%self.tag), self.w.var("CMS_JJ_p6_%s"%self.tag), self.w.var("CMS_JJ_p7_%s"%self.tag)))
 
         getattr(self.w,'import')(model,ROOT.RooFit.Rename(pdfName))
 
@@ -387,13 +415,24 @@ class DataCardMaker:
             x = ROOT.Double(0.)
             parsG[i-1].GetPoint(0,x,pars_val[i-1])
             pName="CMS_JJ_p%i"%i
+            #errUp=pars_val[i-1]+parsG[i-1].GetErrorYhigh(0)*100.
+            #errDown=pars_val[i-1]-parsG[i-1].GetErrorYlow(0)*100.
             errUp=pars_val[i-1]+parsG[i-1].GetErrorYhigh(0)*100.
             errDown=pars_val[i-1]-parsG[i-1].GetErrorYlow(0)*100.
             print i,pName,pars_val[i-1],parsG[i-1].GetErrorYhigh(0),parsG[i-1].GetErrorYlow(0),errUp,errDown
             self.w.factory("{name}[{val},{errDown},{errUp}]".format(name=pName,val=pars_val[i-1],errUp=errUp,errDown=errDown))
     
         if nPars==2: model = ROOT.RooGenericPdf(pdfName, "pow(1-@0/13000., @1)/pow(@0/13000., @2)", ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1"), self.w.var("CMS_JJ_p2")))  
+        #if nPars==2: model = ROOT.RooGenericPdf(pdfName, "exp(@1 + @2*@0)", ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1"), self.w.var("CMS_JJ_p2")))  
         elif nPars==3: model = ROOT.RooGenericPdf(pdfName, "pow(1-@0/13000., @1)/pow(@0/13000., @2+@3*log(@0/13000.))", ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1"), self.w.var("CMS_JJ_p2"), self.w.var("CMS_JJ_p3")))
         elif nPars==4: model = ROOT.RooGenericPdf(pdfName, "pow(1-@0/13000., @1)/ ( pow(@0/13000., @2+@3*log(@0/13000.)+@4*pow(log(@0/13000.),2)) )", ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1"), self.w.var("CMS_JJ_p2"), self.w.var("CMS_JJ_p3"), self.w.var("CMS_JJ_p4")))
+        elif nPars==6: model = ROOT.RooGenericPdf(pdfName, "(0.5*tanh((@0-@6)/@5) + .5)*pow(1-@0/13000., @1)/ ( pow(@0/13000., @2+@3*log(@0/13000.)+@4*pow(log(@0/13000.),2)) )", ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1"), self.w.var("CMS_JJ_p2"), self.w.var("CMS_JJ_p3"), self.w.var("CMS_JJ_p4"), self.w.var("CMS_JJ_p5"), self.w.var("CMS_JJ_p6")))
+        elif nPars==8: model = ROOT.RooGenericPdf(pdfName, "(-0.5*tanh((@0-@6)/@5) + 1.5)*(0.5*tanh((@0-@6)/@5) + .5)*pow(1-@0/13000., @1)/ ( pow(@0/13000., @2+@3*log(@0/13000.)+@4*pow(log(@0/13000.),2)) )", ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1"), self.w.var("CMS_JJ_p2"), self.w.var("CMS_JJ_p3"), self.w.var("CMS_JJ_p4"), self.w.var("CMS_JJ_p5"), self.w.var("CMS_JJ_p6"), self.w.var("CMS_JJ_p7"), self.w.var("CMS_JJ_p8")))
+        elif nPars==5: model = ROOT.RooGenericPdf(pdfName, "pow(1-@0/13000., @1)/ ( pow(@0/13000., @2+@3*log(@0/13000.)+@4*pow(log(@0/13000.),2)+@5*pow(log(@0/13000.),3)) )", ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1"), self.w.var("CMS_JJ_p2"), self.w.var("CMS_JJ_p3"), self.w.var("CMS_JJ_p4"), self.w.var("CMS_JJ_p5")))
+        #elif nPars==6: model = ROOT.RooGenericPdf(pdfName, "pow(1-@0/13000., @1)/ ( pow(@0/13000., @2+@3*log(@0/13000.)+@4*pow(log(@0/13000.),2)+@5*pow(log(@0/13000.),3)+@6*pow(log(@0/13000.),4)) )", ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1"), self.w.var("CMS_JJ_p2"), self.w.var("CMS_JJ_p3"), self.w.var("CMS_JJ_p4"), self.w.var("CMS_JJ_p5"), self.w.var("CMS_JJ_p6")))
+        #elif nPars==6: model = ROOT.RooGenericPdf(pdfName, "@1+@2*@0/13000+@3*pow(@0/13000,2)+@4*pow(@0/13000,3)+@5*pow(@0/13000,4)+@6*pow(@0/13000,5)", ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1"), self.w.var("CMS_JJ_p2"), self.w.var("CMS_JJ_p3"), self.w.var("CMS_JJ_p4"), self.w.var("CMS_JJ_p5"), self.w.var("CMS_JJ_p6")))
+        #elif nPars==7: model = ROOT.RooGenericPdf(pdfName, "@1+@2*@0+@3*pow(@0,2)+@4*pow(@0,3)+@5*pow(@0,4)+@6*pow(@0,5)+@7*pow(@0,6)", ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1"), self.w.var("CMS_JJ_p2"), self.w.var("CMS_JJ_p3"), self.w.var("CMS_JJ_p4"), self.w.var("CMS_JJ_p5"), self.w.var("CMS_JJ_p6"), self.w.var("CMS_JJ_p7")))
+        #elif nPars==7: model = ROOT.RooGenericPdf(pdfName, "@1+@2*@0/13000.+@3*pow(@0/13000.,2)+@4*pow(@0/13000.,3)+@5*pow(@0/13000.,4)+@6*pow(@0/13000.,5)+@7*pow(@0/13000.,6)", ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1"), self.w.var("CMS_JJ_p2"), self.w.var("CMS_JJ_p3"), self.w.var("CMS_JJ_p4"), self.w.var("CMS_JJ_p5"), self.w.var("CMS_JJ_p6"), self.w.var("CMS_JJ_p7")))
+        #elif nPars==8: model = ROOT.RooGenericPdf(pdfName, "@1+@2*@0/13000+@3*pow(@0/13000,2)+@4*pow(@0/13000,3)+@5*pow(@0/13000,4)+@6*pow(@0/13000,5)", ROOT.RooArgList(self.w.var(MVV), self.w.var("CMS_JJ_p1"), self.w.var("CMS_JJ_p2"), self.w.var("CMS_JJ_p3"), self.w.var("CMS_JJ_p4"), self.w.var("CMS_JJ_p5"), self.w.var("CMS_JJ_p6")))
 
         getattr(self.w,'import')(model,ROOT.RooFit.Rename(pdfName))

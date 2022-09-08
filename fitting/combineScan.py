@@ -4,7 +4,7 @@ import shutil
 
 def fitting_options():
     parser = optparse.OptionParser()
-    parser.add_option("-l", "--h5Loc", dest="h5Loc", default="/uscms_data/d1/wmccorma/CASE_ALL/CMSSW_12_4_0_pre2/src/h5Dir", help="top dir where you make h5 files, default is /uscms_data/d1/wmccorma/CASE_ALL/CMSSW_12_4_0_pre2/src/h5Dir/")
+    parser.add_option("-l", "--h5Loc", dest="h5Loc", default="/uscms_data/d1/wmccorma/CASE_ALL/CMSSW_12_4_0_pre2/src/h5Dir/h5s_mjjFlat_35BkgFiles", help="top dir where you make h5 files, default is /uscms_data/d1/wmccorma/CASE_ALL/CMSSW_12_4_0_pre2/src/h5Dir/")
     parser.add_option("-d", "--dirName", dest="dirName", default="DUMMYDIR", help="dir name with h5 files? (e.g. sigTrainXYY_X3000_Y80_UL17_bkgTrainQCDBKG_INJECT_XYY_X3000_Y80_UL17_XS_100fb_15BkgFiles_10percConsidered_5Bins)")
     parser.add_option("-t", "--sigTemplate", dest="sigTemplate", default="DUMMYDIR", help="sigTemplateWithInterpolation (choose one of the sigTemplateMakerWithInterpolation directories, e.g. sigTemplateMakerWithInterpolation_WpToBpT_Bp400_Top170)")
     parser.add_option("--minMscan", dest="minMscan", type=int, default=-1, help="starting mass for scan")
@@ -21,7 +21,7 @@ if __name__ == "__main__":
     h5Loc = options.h5Loc
     if(not os.path.isdir(h5Loc)):
         print("h5 top directory does not exist!")
-        h5Loc = str(raw_input('top dir where you make h5 files, default is /uscms_data/d1/wmccorma/CASE_ALL/CMSSW_12_4_0_pre2/src/h5Dir : ') or "/uscms_data/d1/wmccorma/CASE_ALL/CMSSW_12_4_0_pre2/src/h5Dir/")
+        h5Loc = str(raw_input('top dir where you make h5 files, default is /uscms_data/d1/wmccorma/CASE_ALL/CMSSW_12_4_0_pre2/src/h5Dir/h5s_mjjFlat : ') or "/uscms_data/d1/wmccorma/CASE_ALL/CMSSW_12_4_0_pre2/src/h5Dir/h5s_mjjFlat/")
         if(not os.path.isdir(h5Loc)):
             print("h5 directory still does not exist!")
             exit()
