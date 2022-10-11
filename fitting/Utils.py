@@ -443,6 +443,51 @@ def checkSBFit(filename,label,roobins,plotname, nPars, plot_dir, numEv = 10000):
     return chi2, ndof
 
 
+def checkBFit(filename,label,roobins,plotname, nPars, plot_dir, numEv = 10000):
+    
+    fin = ROOT.TFile.Open(filename,'READ')
+    workspace = fin.w
+
+    model_tot = workspace.pdf('model_s')
+    model_qcd = workspace.pdf('model_b')
+    model_sig = workspace.pdf('shapeSig_model_signal_mjj_JJ_%s' % label)
+    var = workspace.var('mjj')
+    data = workspace.data('data_obs')
+
+    model = model_qcd
+
+    model_tot.Print("v")
+
+    
+    fres = model.fitTo(data,ROOT.RooFit.SumW2Error(1),ROOT.RooFit.Minos(0),ROOT.RooFit.Verbose(0),ROOT.RooFit.Save(1),ROOT.RooFit.NumCPU(8)) 
+    #fres.Print()
+    
+    frame = var.frame()
+    data.plotOn(frame,ROOT.RooFit.DataError(ROOT.RooAbsData.Poisson), ROOT.RooFit.Binning(roobins),ROOT.RooFit.Name("data_obs"),ROOT.RooFit.Invisible())
+    model.getPdf('JJ_%s'%label).plotOn(frame,ROOT.RooFit.VisualizeError(fres,1),ROOT.RooFit.FillColor(ROOT.kRed-7),ROOT.RooFit.LineColor(ROOT.kRed-7),ROOT.RooFit.Name(fres.GetName()))
+    model.getPdf('JJ_%s'%label).plotOn(frame,ROOT.RooFit.LineColor(ROOT.kRed+1),ROOT.RooFit.Name("model_b"))
+    #model_qcd.plotOn(frame,ROOT.RooFit.VisualizeError(fres,1),ROOT.RooFit.FillColor(ROOT.kGreen-7),ROOT.RooFit.LineColor(ROOT.kGreen-7), ROOT.RooFit.Name("Background"))
+    #model_qcd.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kRed+1),ROOT.RooFit.Name("Background"))
+    #sig_norm_pdf.plotOn(frame,ROOT.RooFit.VisualizeError(fres,1),ROOT.RooFit.FillColor(ROOT.kBlue-7),ROOT.RooFit.LineColor(ROOT.kBlue-7), ROOT.RooFit.Name("Signal"))
+    #sig_norm_pdf.plotOn(frame,ROOT.RooFit.LineColor(ROOT.kBlue+1), ROOT.RooFit.Name("Signal"))
+
+    frame3 = var.frame()
+    #average bin edges instead of bin center
+    useBinAverage = True
+    hpull = frame.pullHist("data_obs","model_b",useBinAverage)
+    frame3.addPlotable(hpull,"X0 P E1")
+    
+    data.plotOn(frame,ROOT.RooFit.DataError(ROOT.RooAbsData.Poisson), ROOT.RooFit.Binning(roobins),ROOT.RooFit.Name("data_obs"),ROOT.RooFit.XErrorSize(0))
+    chi2,ndof = calculateChi2(hpull, nPars +1)
+
+    pdf_names = ["model_b"] 
+    PlotFitResults(frame,fres.GetName(),nPars+1,frame3,"data_obs", pdf_names,chi2,ndof,'bFit_'+plotname, plot_dir, has_sig = True, dolog = False, setMax = float(numEv)/5.)
+
+    print "background only? chi2,ndof are", chi2, ndof
+    return chi2, ndof
+
+
+
 def f_test(nParams, nDof, chi2, thresh = 0.05):
     #assumes arrays are in increasing number of params order (ie nParams[0] is minimum number of params)
     print  "\n\n #################### STARTING F TEST #######################" 

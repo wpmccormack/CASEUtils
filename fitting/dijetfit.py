@@ -2,7 +2,7 @@ import os
 from Fitter import Fitter
 from DataCardMaker import DataCardMaker
 from Utils import load_h5_sig, load_h5_sb, load_h5_fracSig, load_h5_numEv, truncate, apply_blinding
-from Utils import f_test, calculateChi2, PlotFitResults, checkSBFit
+from Utils import f_test, calculateChi2, PlotFitResults, checkSBFit, checkBFit
 from Utils import check_rough_sig, roundTo
 from array import array
 import pickle
@@ -150,9 +150,10 @@ def cardWriter(options,histos_sb,qcd_fname,nPars_QCD,sig_file_name,extraName="",
                                               "mjj_sig", constant=constant)
     else:
         #sig_norm = card.addFloatingYield('model_signal_mjj', 0, sig_file_name, "mjj_sig", 0., 1000.)
-        constant = constant*10.
+        constant = constant*1.
         sig_norm = card.addFixedYieldFromFile('model_signal_mjj', 0, sig_file_name,
                                               "mjj_sig", constant=constant*fracSig)
+        #print('constant*fracSig = ', constant*fracSig)
         #sig_norm = card.addFixedYieldFromFilev2('model_signal_mjj', 0, sig_file_name,
         #                                      "mjj_sig", constant=constant)
     #sig_norm = card.addFloatingYield('model_signal_mjj', 0, sig_file_name,
@@ -161,8 +162,9 @@ def cardWriter(options,histos_sb,qcd_fname,nPars_QCD,sig_file_name,extraName="",
         card.addSystematic("CMS_scale_j", "param", [0.0, 0.012])
         card.addSystematic("CMS_res_j", "param", [0.0, 0.08])
         if((not (options.tag == None)) and (not options.corner)):
-            if(not extraName=="_FLOAT"):
-                card.addSystematic("model_signal_mjj_"+str(options.tag)+"_norm", "param", [1.0, .1])
+            #if(not extraName=="_FLOAT"):
+            #    card.addSystematic("model_signal_mjj_"+str(options.tag)+"_norm", "param", [1.0, .1])
+            card.addSystematic("model_signal_mjj_"+str(options.tag)+"_norm", "param", [1.0, .1]) #adding this to FLOAT, so that I can calculate number of signal events more easily
             card.addSystematic("model_signal_mjj_"+str(options.tag)+"_norm", "rateParam", 1.0, bin="JJ_"+str(options.tag), process="model_signal_mjj", variables="[0.,2.]")
 
     if(not signalOnly):
@@ -211,10 +213,10 @@ def dijetfit(options):
 
 
 
-    binsx = [1460, 1530, 1607, 1687, 1770, 1856, 1945, 2037, 2132, 2231, 2332, 2438,
-             2546, 2659, 2775, 2895, 3019, 3147, 3279, 3416, 3558, 3704, 3854,
-             4010, 4171, 4337, 4509, 4686, 4869, 5058, 5253, 5500, 5663, 5877,
-             6099, 6328, 6564, 6808]
+    #binsx = [1460, 1530, 1607, 1687, 1770, 1856, 1945, 2037, 2132, 2231, 2332, 2438,
+    #         2546, 2659, 2775, 2895, 3019, 3147, 3279, 3416, 3558, 3704, 3854,
+    #         4010, 4171, 4337, 4509, 4686, 4869, 5058, 5253, 5500, 5663, 5877,
+    #         6099, 6328, 6564, 6808]
     #binsx = [2132, 2231, 2332, 2438,
     #         2546, 2659, 2775, 2895, 3019, 3147, 3279, 3416, 3558, 3704, 3854,
     #         4010, 4171, 4337, 4509, 4686, 4869, 5058, 5253, 5500, 5663, 5877,
@@ -237,16 +239,37 @@ def dijetfit(options):
     #         4010, 4171, 4337, 4509, 4686, 4869, 5058, 5253, 5500, 5663, 5877,
     #         6099, 6328, 6564, 6808]
 
+    #binsx = [3704, 3854,
+    #         4010, 4171, 4337, 4509, 4686, 4869, 5058, 5253, 5500, 5663, 5877,
+    #         6099, 6328, 6564, 6808]
+
     #binsx=range(1600,6088,88)
-    
     #binsx=range(1600,3800,88)+range(3800,6176,176)
     
-    #binsx=range(1600,4000,88)
+    #binsx=range(1600,3200,70)
+    #binsx=range(2300,4000,70)
+    #binsx=range(3200,6500,70)
+
+    #binsx=range(1600,3000,90)
+    #binsx=range(2000,3800,90)
+    #binsx=range(3000,5000,90)
+    #binsx=range(4000,6000,90)
+
+    minx = options.binMin
+    maxx = options.binMax
+    if(minx < 1600):
+        minx = 1600
+    if(maxx > 6500):
+        maxx = 6500
+    binsx = range(int(minx), int(maxx), 80)
+
+    
     #binsx=range(1600,4000,44)
     #binsx=range(1600,4000,176)
     
     #binsx=range(1600,6000,176)
     #binsx=range(3000,6900,176)
+    #binsx=range(3800,6900,176)
     
     #binsx=range(2000,6000,176)
     #binsx=range(1900,3800,88)+range(3800,6176,176)
@@ -295,7 +318,8 @@ def dijetfit(options):
         sig_file_name = options.sig_shape
         sig_norm = cardWriter(options,"","","",sig_file_name,"",options.noReFit,fracSig)
         if(not options.tag == None):
-            sig_norm2 = cardWriter(options,"","","",sig_file_name,"_FLOAT", options.noReFit)
+            #sig_norm2 = cardWriter(options,"","","",sig_file_name,"_FLOAT", options.noReFit)
+            sig_norm2 = cardWriter(options,"","","",sig_file_name,"_FLOAT", options.noReFit, 0.005952) #make expected signal rate 100 I think
 
             #if options.tag == None:
             #    cmd = (
@@ -554,8 +578,13 @@ def dijetfit(options):
 
 
     sig_norm = cardWriter(options,histos_sb,qcd_fname,nPars_QCD,sig_file_name,"",False,fracSig)
+    if(options.printSig):
+        signalTotals = open("signalTotals_M"+str(int(options.mass))+"_range_"+str(options.binMin)+"_"+str(options.binMax)+".txt","a")
+        signalTotals.write(str(fracSig*1.*1680.)+'\n')
+        signalTotals.close()
+    #print('sig_norm = ', sig_norm)
     if(not options.tag == None):
-        sig_norm2 = cardWriter(options,histos_sb,qcd_fname,nPars_QCD,sig_file_name,"_FLOAT", False)
+        sig_norm2 = cardWriter(options,histos_sb,qcd_fname,nPars_QCD,sig_file_name,"_FLOAT", False, 0.005952)
     """
     card = DataCardMaker(sb_label)
     if options.dcb_model:
@@ -643,12 +672,38 @@ def dijetfit(options):
     if(not options.tag == None):
         sbfit_chi2, sbfit_ndof = checkSBFit('workspace_JJ_{l1}_{l2}.root'.format(l1=label, l2=sb_label),
                                             sb_label, roobins, label + "_" + sb_label, nPars_QCD, plot_dir, numEv)
+        #print('sig_norm = ', sig_norm)
+
+        ##cmd1 = ("text2workspace.py datacard_JJ_{l2}.txt").format(l2=sb_label)
+        ##cmd2 = ("combine -M MultiDimFit datacard_JJ_{l2}.root -m {mass} -P r -n fit_test_single").format(mass=mass, l2=sb_label)
+
+        ##cmd1 = ("combine -M MultiDimFit workspace_JJ_{l1}_{l2}.root -m {mass} -P r -n fit_test_single").format(mass=mass, l1=label, l2=sb_label)
+        #cmd1 = ("combine -M MultiDimFit datacard_JJ_{l2}_FLOAT.txt -m {mass} -P r -n fit_test_single").format(mass=mass, l2=sb_label)
+        
+        #os.system(cmd1)
+        ##os.system(cmd2)
+        #f_signif = ROOT.TFile.Open(("higgsCombinefit_test_single.MultiDimFit.mH{mass}.root").format(mass=str(int(mass))), "READ")
+        #res1 = f_signif.Get("limit")
+        #try:
+        #    res1.GetEntry(0)
+        #    signif = res1.r
+        #except:
+        #    signif = -1.
+        #    signorm = -1.
+        #print('rVal = '+str(signif))
+        ##print('expected SIGNAL = ', str(signif*sig_norm))
+        #print('expected SIGNAL = ', str(signif*100.))
         return 0
 
     sbfit_chi2, sbfit_ndof = checkSBFit('workspace_JJ_{l1}_{l2}.root'.format(l1=label, l2=sb_label),
                                         sb_label, roobins, label + "_" + sb_label, nPars_QCD, plot_dir, numEv)
+    sbfit_chi2_b, sbfit_ndof_b = checkBFit('workspace_JJ_{l1}_{l2}.root'.format(l1=label, l2=sb_label),
+                                        sb_label, roobins, label + "_" + sb_label, nPars_QCD-1, plot_dir, numEv)
 
     sbfit_prob = ROOT.TMath.Prob(sbfit_chi2, sbfit_ndof)
+    print('sbfit_prob = ', sbfit_prob)
+    sbfit_prob_b = ROOT.TMath.Prob(sbfit_chi2_b, sbfit_ndof_b)
+    print('sbfit_prob_b = ', sbfit_prob_b)
 
     f_signif_name = ('higgsCombinesignificance_{l1}_{l2}.'
                      + 'Significance.mH{mass:.0f}.root'
@@ -768,6 +823,12 @@ def fitting_options():
                       default=False,
                       help="""Whether to use double crystal ball model instead
                       of default model (gaussian core with single crystal ball)""")
+    parser.add_option("--binMin", type=float, default=1500.0,
+                      help="Minimum bin for the fit")
+    parser.add_option("--binMax", type=float, default=6500.0,
+                      help="Maximum bin for the fit")
+    parser.add_option("--printSig", dest="printSig", default=False,
+                      help="Print signal rate to file?  For asymptotic limits in QUAK")
     parser.add_option("--sig_norm_unc", dest="sig_norm_unc", type=float, default= -1.0, help="Fractional uncertainty on signal normalization")
     return parser
 
