@@ -2,6 +2,12 @@
 
 Make h5's from the extended NanoAOD (pancakes) after applying a preselection. 
 
+To run locally, try something like `python make_h5_local.py -i input_file.root -o output_file.h5 -y 201X -f 0` 
+
+The option `-f` sets the truth label of the output. Usually signal is 1, QCD is 0, single top -1, ttbar -2, V+jets -3
+Use the `--sys` option if you are running on a signal and want to save the event weights for the systematic variation. 
+The options are described a bit in `make_h5_local.py`
+
 ## Preselection
 
 The preselection is as follows
@@ -54,11 +60,12 @@ btag score (max deepB score of ak4 subjets) and number of PF constituents for j1
 padded
 
 
-If `--sys` flag is used, additional columns with info necessary for systematics
+If `--sys` flag is used, additional corrections are applied and dditional columns with info necessary for systematics
 computation are added
 
 **sys\_weights** 21 floats: See `sys_weights_map` dictionary inside H5\_maker.py for map of variable name to index. 
-    "nom_weight" is the nominal weight and all others are the weights for given systematic variation.
+    "nom_weight" is the nominal weight and all others are multiplicative factors for given systematic variation 
+    (ie to compute the weight for a given systematic variation, one should multiply the nominal weight by the corresponding factor). 
         
         ```[nom_weight, pdf_up, pdf_down, prefire_up, prefire_down, pileup_up, pileup_down, btag_up, btag_down, 
         PS_ISR_up, PS_ISR_down, PS_FSR_up, PS_FSR_down, F_up, F_down, R_up, R_down, RF_up, RF_down, top_ptrw_up, top_ptrw_down] ```
