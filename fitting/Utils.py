@@ -107,7 +107,7 @@ def truncate(binning,mmin,mmax):
     return res
 
 
-def PlotFitResults(frame,fitErrs,nPars,pulls,data_name,pdf_names,chi2,ndof,canvname, plot_dir, has_sig = False, dolog=True, setMax = 1E4):
+def PlotFitResults(frame,fitErrs,nPars,pulls,data_name,pdf_names,chi2,ndof,canvname, plot_dir, has_sig = False, dolog=True, setMax = 1E7):
 
     c1 =ROOT.TCanvas("c1","",800,800)
     if(dolog):
@@ -131,7 +131,6 @@ def PlotFitResults(frame,fitErrs,nPars,pulls,data_name,pdf_names,chi2,ndof,canvn
     frame.GetYaxis().SetTitleSize(0.06)
     frame.GetYaxis().SetTitleOffset(0.98)
     frame.SetMinimum(0.2)
-    #frame.SetMaximum(1E7)
     frame.SetMaximum(setMax)
     frame.SetName("mjjFit")
     frame.GetYaxis().SetTitle("Events / 100 GeV")

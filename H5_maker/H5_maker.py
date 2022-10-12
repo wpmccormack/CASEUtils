@@ -140,7 +140,7 @@ class Outputer:
         
         
         pfcands_pt = np.sqrt(pfcands[:, 0]**2 + pfcands[:, 1]**2)
-        sorted_idx = np.flip(np.argsort(pfcands_pt))
+        sorted_idx = np.flip(np.argsort(pfcands_pt),0)
         pfcands = pfcands[sorted_idx]
         
         return pfcands.astype(np.float16)
@@ -534,7 +534,7 @@ def NanoReader(process_flag, inputFileNames=["in.root"], outputFileName="out.roo
                 'HLT_AK8PFJet500'
                 ]
 
-    mjj_cut = 1200.
+    mjj_cut = 400.
     
     nFiles = len(inputFileNames)
     print("Will run over %i files and output to %s with truth label %i" % (nFiles, outputFileName, process_flag))
@@ -802,7 +802,6 @@ def NanoReader(process_flag, inputFileNames=["in.root"], outputFileName="out.roo
 
                 dijet = jet1_4vec + jet2_4vec
                 mjj = dijet.M()
-
 
 
             if(mjj< mjj_cut or jet1.pt < jet_min_pt or jet2.pt < jet_min_pt): continue
