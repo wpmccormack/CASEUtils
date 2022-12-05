@@ -282,7 +282,6 @@ def calculateChi2(g_pulls, nPars, ranges = None, excludeZeros = True, dataHist =
                 print(x, a_data[0], pull)
             NumberOfObservations_VarBin+=1
             chi2_VarBin += pow(pull,2)
-            print(p, pow(pull,2), chi2_VarBin)
             
     ndf_VarBin = NumberOfObservations_VarBin - nPars
     return chi2_VarBin,ndf_VarBin
@@ -346,12 +345,12 @@ def fill_hist(v, h, event_num = None):
     #h.Print("range")
 
 
-def load_h5_fracSig(h_file):
+def load_h5_fracSig(h_file): #needed for QUAK
     with h5py.File(h_file, "r") as f:
         return np.array(f['fracSig'][0])
 
 
-def load_h5_numEv(h_file):
+def load_h5_numEv(h_file): #needed for QUAK
     with h5py.File(h_file, "r") as f:
         return np.array(f['numEv'][0])
 
@@ -378,7 +377,7 @@ def load_h5_bkg(h_file, hist, correctStats = False):
     fill_hist(mjj[mask], hist, event_num)
 
 
-def load_h5_sig(h_file, hist, sig_mjj, correctStats =False):
+def load_h5_sig(h_file, hist, sig_mjj, requireWindow = False, correctStats =False, mixed = False):
     event_num = None
     with h5py.File(h_file, "r") as f:
         try:
@@ -387,7 +386,10 @@ def load_h5_sig(h_file, hist, sig_mjj, correctStats =False):
             mjj = f['mjj'][()]
 
         num_evts = mjj.shape[0]
-        is_sig = f['truth_label'][()].flatten()
+        if(mixed):
+            is_sig = f['truth_label'][()].flatten()
+        else: 
+            is_sig = np.ones_like(mjj)
 
 
         if(is_sig.shape[0] != mjj.shape[0]):
@@ -398,7 +400,8 @@ def load_h5_sig(h_file, hist, sig_mjj, correctStats =False):
             event_num = f['event_num'][()]
 
 
-    mask = (mjj > 0.8*sig_mjj) & (mjj < 1.2*sig_mjj) & (is_sig > 0.9)
+    if(requireWindow): mask = (mjj > 0.8*sig_mjj) & (mjj < 1.2*sig_mjj) & (is_sig > 0.9)
+    else: mask = mjj > 0.
     if(correctStats): event_num = event_num[mask]
     fill_hist(mjj[mask], hist, event_num)
 

@@ -10,7 +10,7 @@ class DataCardMaker:
         self.systematics=[]
         self.tag="JJ"+"_"+tag
         self.extraName=extraName
-        self.signalOnly=signalOnly
+        self.signalOnly=signalOnly #In QUAK testing, it's occasionally necessary to re-run all fits for bins in the QUAK space (which would be 81 spectra for 9x9 bins).  I added in an option in the dijetfit macro to extract background information from previous times that you've run the fit, which can dramatically speed up the process.  This doesn't affect other methods, as long as you don't turn on the noReFit option
         self.rootFile = ROOT.TFile("datacardInputs_{filetag}.root".format(filetag = (self.tag if(not signalOnly) else self.tag+"_signalOnly")),"RECREATE")
         self.rootFile.cd()
         self.w=ROOT.RooWorkspace("w","w")
@@ -170,20 +170,6 @@ class DataCardMaker:
         #histogram=f.Get(histoName)
         #events=histogram.Integral()*self.luminosity*constant
         events=1680.0*constant
-
-        self.contributions.append({'name':name,'pdf':pdfName,'ID':ID,'yield':events})
-        return events
-
-    def addFixedYieldFromFilev2(self,name,ID,filename,histoName,constant=1.0,mini=0,maxi=1e+9):
-        pdfName="_".join([name,self.tag])
-        pdfNorm="_".join([name,self.tag,"norm"])
-        f=ROOT.TFile(filename)
-        #histogram=f.Get(histoName)
-        #events=histogram.Integral()*self.luminosity*constant
-        events=1680.0
-        
-        self.w.factory("{name}[{val},{mini},{maxi}]".format(name=pdfNorm,val=events,mini=mini,maxi=maxi))
-        self.w.var(pdfNorm).setConstant(1)
 
         self.contributions.append({'name':name,'pdf':pdfName,'ID':ID,'yield':events})
         return events
@@ -415,8 +401,6 @@ class DataCardMaker:
             x = ROOT.Double(0.)
             parsG[i-1].GetPoint(0,x,pars_val[i-1])
             pName="CMS_JJ_p%i"%i
-            #errUp=pars_val[i-1]+parsG[i-1].GetErrorYhigh(0)*100.
-            #errDown=pars_val[i-1]-parsG[i-1].GetErrorYlow(0)*100.
             errUp=pars_val[i-1]+parsG[i-1].GetErrorYhigh(0)*100.
             errDown=pars_val[i-1]-parsG[i-1].GetErrorYlow(0)*100.
             print i,pName,pars_val[i-1],parsG[i-1].GetErrorYhigh(0),parsG[i-1].GetErrorYlow(0),errUp,errDown

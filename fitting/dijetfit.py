@@ -39,7 +39,7 @@ def fit_signalmodel(input_file, sig_file_name, mass, x_bins, fine_bins,
     histos_sig = ROOT.TH1F("mjj_sig", "mjj_sig",
                            len(bins_sig_fit) - 1, bins_sig_fit)
 
-    load_h5_sig(input_file, histos_sig, mass)
+    load_h5_sig(input_file, histos_sig, mass, requireWindow = False)
     sig_outfile = ROOT.TFile(sig_file_name, "RECREATE")
     fitter = Fitter(['mjj_fine'])
 
@@ -153,17 +153,12 @@ def cardWriter(options,histos_sb,qcd_fname,nPars_QCD,sig_file_name,extraName="",
         constant = constant*1.
         sig_norm = card.addFixedYieldFromFile('model_signal_mjj', 0, sig_file_name,
                                               "mjj_sig", constant=constant*fracSig)
-        #print('constant*fracSig = ', constant*fracSig)
-        #sig_norm = card.addFixedYieldFromFilev2('model_signal_mjj', 0, sig_file_name,
-        #                                      "mjj_sig", constant=constant)
     #sig_norm = card.addFloatingYield('model_signal_mjj', 0, sig_file_name,
     #                                 "mjj_sig", constant=False)
     if(not signalOnly):
         card.addSystematic("CMS_scale_j", "param", [0.0, 0.012])
         card.addSystematic("CMS_res_j", "param", [0.0, 0.08])
         if((not (options.tag == None)) and (not options.corner)):
-            #if(not extraName=="_FLOAT"):
-            #    card.addSystematic("model_signal_mjj_"+str(options.tag)+"_norm", "param", [1.0, .1])
             card.addSystematic("model_signal_mjj_"+str(options.tag)+"_norm", "param", [1.0, .1]) #adding this to FLOAT, so that I can calculate number of signal events more easily
             card.addSystematic("model_signal_mjj_"+str(options.tag)+"_norm", "rateParam", 1.0, bin="JJ_"+str(options.tag), process="model_signal_mjj", variables="[0.,2.]")
 
@@ -184,7 +179,6 @@ def cardWriter(options,histos_sb,qcd_fname,nPars_QCD,sig_file_name,extraName="",
             card.addSystematic("model_qcd_mjj_JJ_norm", "flatParam", [])
         else:
             card.addSystematic("model_qcd_mjj_JJ_"+str(options.tag)+"_norm", "flatParam", [])
-            #card.addSystematic("model_signal_mjj_JJ_"+str(options.tag)+"_norm", "flatParam", [])
 
         card.importBinnedData("sb_fit.root", sig_data_name,
                               ["mjj"], 'data_obs', 1.0)
@@ -219,7 +213,7 @@ def dijetfit(options):
              4010, 4171, 4337, 4509, 4686, 4869, 5058, 5253, 5500, 5663, 5877,
              6099, 6328, 6564, 6808]
 
-    if(not options.tag == None):
+    if(not options.tag == None): #QUAK uses slightly different binning for now
         minx = options.binMin
         maxx = options.binMax
         if(minx < 1600):
@@ -249,8 +243,6 @@ def dijetfit(options):
 
     bins_fine = int(binsx[-1] - binsx[0])/fine_bin_size
 
-
-
     fracSig = 1.0
     if options.tag == None:
         sb_label = "raw"
@@ -268,15 +260,6 @@ def dijetfit(options):
             sig_norm2 = cardWriter(options,"","","",sig_file_name,"_FLOAT", options.noReFit, 0.05952) #make expected signal rate 100 (default normalization is 1680)
 
         return 0
-
-
-
-
-
-
-
-
-
 
 
     histos_sb = ROOT.TH1F("mjj_sb", "mjj_sb" ,bins_fine, binsx[0], binsx[-1])
@@ -413,25 +396,25 @@ def dijetfit(options):
 
         my_chi2, my_ndof = calculateChi2(hpull, nPars, excludeZeros = True, dataHist = dhist)
         my_prob = ROOT.TMath.Prob(my_chi2, my_ndof)
-        """
-        PlotFitResults(frame, fres.GetName(), nPars, framePulls, data_name,
-                       model_name, my_chi2, my_ndof,
-                       str(nPars) + "par_qcd_fit_binned{}".format(
-                           "_blinded" if options.blinded else ""),
-                       plot_dir)
-        """
-        PlotFitResults(frame, fres.GetName(), nPars, framePulls, data_name,
-                       model_name, my_chi2, my_ndof,
-                       str(nPars) + "par_qcd_fit_binned{}".format(
-                           "_blinded" if options.blinded else ""),
-                       plot_dir, False, False,6000)
+        if(options.tag == None):
+            PlotFitResults(frame, fres.GetName(), nPars, framePulls, data_name,
+                           model_name, my_chi2, my_ndof,
+                           str(nPars) + "par_qcd_fit_binned{}".format(
+                               "_blinded" if options.blinded else ""),
+                           plot_dir)
+        else:
+            PlotFitResults(frame, fres.GetName(), nPars, framePulls, data_name,
+                           model_name, my_chi2, my_ndof,
+                           str(nPars) + "par_qcd_fit_binned{}".format(
+                               "_blinded" if options.blinded else ""),
+                           plot_dir, False, False,6000)
 
         graphs = {}
         for p in range(nPars):
             graphs['p%i' % (p + 1)] = ROOT.TGraphErrors()
 
         for var, graph in graphs.iteritems():
-            print('hello, ', var)
+            print(var)
             value, error = fitter_QCD.fetch(var)
             graph.SetPoint(0, mass, value)
             graph.SetPointError(0, 0.0, error)
@@ -496,8 +479,8 @@ def dijetfit(options):
             + "-m {mass} -n significance_{l1}_{l2} "
             + "&& combine -M Significance workspace_JJ_{l1}_{l2}.root "
             + "-m {mass} --pvalue -n pvalue_{l1}_{l2} "
-            #+ "&& combine -M AsymptoticLimits workspace_JJ_{l1}_{l2}.root "
-            #+ "-m {mass} -n lim_{l1}_{l2}"
+            + "&& combine -M AsymptoticLimits workspace_JJ_{l1}_{l2}.root "
+            + "-m {mass} -n lim_{l1}_{l2}"
             ).format(mass=mass, l1=label, l2=sb_label)
     else:
         cmd = (
@@ -523,9 +506,7 @@ def dijetfit(options):
                                         sb_label, roobins, label + "_" + sb_label, nPars_QCD-1, plot_dir, numEv)
 
     sbfit_prob = ROOT.TMath.Prob(sbfit_chi2, sbfit_ndof)
-    print('sbfit_prob = ', sbfit_prob)
     sbfit_prob_b = ROOT.TMath.Prob(sbfit_chi2_b, sbfit_ndof_b)
-    print('sbfit_prob_b = ', sbfit_prob_b)
 
     f_signif_name = ('higgsCombinesignificance_{l1}_{l2}.'
                      + 'Significance.mH{mass:.0f}.root'
@@ -575,7 +556,7 @@ def dijetfit(options):
     print("p-value is %.3f \n" % pval)
 
     # TODO: Comment back in
-    #check_rough_sig(options.inputFile, options.mass*0.9, options.mass*1.1)
+    check_rough_sig(options.inputFile, options.mass*0.9, options.mass*1.1)
     f_signif.Close()
     f_limit.Close()
     f_pval.Close()

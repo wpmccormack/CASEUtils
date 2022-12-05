@@ -203,9 +203,6 @@ class Fitter(object):
             self.w.factory("p1[9.28433e+00, -100. , 100.]")
             self.w.factory("p2[1.03641e+01, -200, 200]")
             model = ROOT.RooGenericPdf(name, "pow(1-@0/13000., @1)/pow(@0/13000., @2)", ROOT.RooArgList(self.w.var(poi), self.w.var("p1"), self.w.var("p2")))	 
-            #self.w.factory("p1[1.17075e+01, 0. , 100.]")
-            #self.w.factory("p2[-2.21678e-03, -1, 0]")
-            #model = ROOT.RooGenericPdf(name, "exp(@1 + @2*@0)", ROOT.RooArgList(self.w.var(poi), self.w.var("p1"), self.w.var("p2")))	 
         elif nPars==3: 
             self.w.factory("p1[9.28433e+00, -100. , 100.]")
             self.w.factory("p2[1.03641e+01, -200, 200]")
@@ -213,24 +210,6 @@ class Fitter(object):
             model = ROOT.RooGenericPdf(name, "pow(1-@0/13000., @1)/pow(@0/13000., @2+@3*log(@0/13000.))", ROOT.RooArgList(self.w.var(poi), self.w.var("p1"), self.w.var("p2"), self.w.var("p3")))
         elif nPars==4:
             #default set
-            """
-            self.w.factory("p1[9.28433e+00, -100. , 100.]")
-            self.w.factory("p2[1.03641e+01, -200, 200]")	 
-            self.w.factory("p3[2.35256e+00, -100., 100.]")
-            self.w.factory("p4[4.17695e-01, -100., 100.]")
-            """
-            """
-            self.w.factory("p1[7.66573e+00, 0. , 20]")
-            self.w.factory("p2[-5.15441e+00, -10, 0]")	 
-            self.w.factory("p3[1.22752e+00, 0., 5.]")
-            self.w.factory("p4[-1.72024e-01, -1., 0.]")
-            """
-            """
-            self.w.factory("p1[6.02992e+00, 0. , 20]")
-            self.w.factory("p2[6.28634e+00, 0., 20]")	 
-            self.w.factory("p3[6.32552e-01, 0., 10.]")
-            self.w.factory("p4[-8.53977e-02, -1., 0.]")
-            """
             self.w.factory("p1[6.02992e+00, -100. , 100]")
             self.w.factory("p2[6.28634e+00, -200., 200]")	 
             self.w.factory("p3[6.32552e-01, -100., 100.]")
@@ -252,35 +231,8 @@ class Fitter(object):
             #self.w.factory("p4[1.78503e+00, -1000., 100.]")
 
             model = ROOT.RooGenericPdf(name, "pow(1-@0/13000., @1) / ( pow(@0/13000., @2+@3*log(@0/13000.)+@4*pow(log(@0/13000.),2)) )", ROOT.RooArgList(self.w.var(poi), self.w.var("p1"), self.w.var("p2"), self.w.var("p3"), self.w.var("p4")))
-        elif nPars==6:
-            #default set
-            """
-            self.w.factory("p1[9.28433e+00, -100. , 100.]")
-            self.w.factory("p2[1.03641e+01, -200, 200]")	 
-            self.w.factory("p3[2.35256e+00, -100., 100.]")
-            self.w.factory("p4[4.17695e-01, -100., 100.]")
-            """
-            """
-            self.w.factory("p1[7.66573e+00, 0. , 20]")
-            self.w.factory("p2[-5.15441e+00, -10, 0]")	 
-            self.w.factory("p3[1.22752e+00, 0., 5.]")
-            self.w.factory("p4[-1.72024e-01, -1., 0.]")
-            """
-            """
-            self.w.factory("p1[6.02992e+00, 0. , 20]")
-            self.w.factory("p2[6.28634e+00, 0., 20]")	 
-            self.w.factory("p3[6.32552e-01, 0., 10.]")
-            self.w.factory("p4[-8.53977e-02, -1., 0.]")
-            """
-            self.w.factory("p1[6.02992e+00, -100. , 100]")
-            self.w.factory("p2[6.28634e+00, -200., 200]")	 
-            self.w.factory("p3[6.32552e-01, -100., 100.]")
-            self.w.factory("p4[-8.53977e-02, -100., 100.]")
-            self.w.factory("p5[1000, 1., 5000.]")
-            self.w.factory("p6[1600, 0., 2500.]")
-
-            model = ROOT.RooGenericPdf(name, "(0.5*tanh((@0-@6)/@5) + .5)*pow(1-@0/13000., @1) / ( pow(@0/13000., @2+@3*log(@0/13000.)+@4*pow(log(@0/13000.),2)) )", ROOT.RooArgList(self.w.var(poi), self.w.var("p1"), self.w.var("p2"), self.w.var("p3"), self.w.var("p4"), self.w.var("p5"), self.w.var("p6")))
-
+            #alt func
+            #model = ROOT.RooGenericPdf(name, "( @1*pow(1-@0/13000 + @4*pow(@0/13000,2),@2) ) / ( pow(@0/13000,@3) )", ROOT.RooArgList(self.w.var(poi), self.w.var("p1"), self.w.var("p2"), self.w.var("p3"), self.w.var("p4")))
 
         elif nPars ==5:
             self.w.factory("p1[9.28433e+00, -100. , 100.]")
