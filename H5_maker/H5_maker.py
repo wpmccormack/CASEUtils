@@ -191,11 +191,6 @@ class Outputer:
 
         event_info = [eventNum, MET, MET_phi, genWeight, leptonic_decay, run, self.year, num_jets]
 
-        jet1.pt_corr = jet1.pt
-        jet2.pt_corr = jet2.pt
-
-        jet1.msoftdrop_corr = jet1.msoftdrop
-        jet2.msoftdrop_corr = jet2.msoftdrop
 
 
         sys_weights = []
@@ -693,6 +688,11 @@ def NanoReader(process_flag, inputFileNames=["in.root"], outputFileName="out.roo
             dijet = jet1_4vec + jet2_4vec
             mjj = dijet.M()
 
+            jet1.pt_corr = jet1.pt
+            jet2.pt_corr = jet2.pt
+
+            jet1.msoftdrop_corr = jet1.msoftdrop
+            jet2.msoftdrop_corr = jet2.msoftdrop
 
 
             if(include_systematics):
@@ -736,6 +736,7 @@ def NanoReader(process_flag, inputFileNames=["in.root"], outputFileName="out.roo
                 jet1_msoftdrop_JER_down = inTree.readBranch("FatJet1_msoftdrop_JER_down")
                 jet2_msoftdrop_JER_down = inTree.readBranch("FatJet2_msoftdrop_JER_down")
 
+                #TODO JMS uncs of flag 5% ? 
                 jet1_msoftdrop_JMS_up = inTree.readBranch("FatJet1_msoftdrop_JMS_up")
                 jet2_msoftdrop_JMS_up = inTree.readBranch("FatJet2_msoftdrop_JMS_up")
 
