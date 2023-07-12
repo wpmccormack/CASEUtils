@@ -137,6 +137,18 @@ def dijetfit(options):
              2546, 2659, 2775, 2895, 3019, 3147, 3279, 3416, 3558, 3704, 3854,
              4010, 4171, 4337, 4509, 4700, 4900,  5100, 5300, 5500, 5800,
              6100, 6400, 6800]
+             #6100, 6400, 6800, 7300, 7900]
+
+
+    binslow = 0
+    for mb in binsx:
+        #if(mb < 0.5*options.mass):# or mb<2000):
+        #if(mb < 0.6*options.mass):# or mb<2000):
+        #if(mb < 0.6*options.mass):# or mb<2000):
+        if(mb < options.mult_min*options.mass):# or mb<2000):
+            binslow+=1
+    for bl in range(binslow):
+        binsx.pop(0)
 
     if(options.mjj_max < 0. and options.rebin): 
         options.mjj_max = get_mjj_max(options.inputFile) + 5.0
@@ -303,11 +315,21 @@ def dijetfit(options):
 
 
 
-        useBinAverage = True
+        #useBinAverage = True
+        useBinAverage = False
         hpull = frame.pullHist(data_name, model_name, useBinAverage)
         hresid = frame.residHist(data_name, model_name, False, useBinAverage)
         dhist = ROOT.RooHist(frame.findObject(data_name, ROOT.RooHist.Class()))
 
+
+        a_x = array('d', [0.])
+        a_val = array('d', [0.])
+        a_data = array('d', [0.])
+        for p in range (0,hresid.GetN()):
+            hresid.GetPoint(p, a_x, a_val)
+            x = a_x[0]
+            pull = a_val[0]
+            print('p',p,'resid=',pull)
 
 
         #get fractional error on fit
@@ -333,7 +355,6 @@ def dijetfit(options):
         err_on_sig = abs(upBound.Eval(options.mass) - loBound.Eval(options.mass))/2.
         frac_err_on_sig = err_on_sig / central.Eval(options.mass)
         bkg_fit_frac_err = frac_err_on_sig
-
 
         my_chi2, my_ndof = calculateChi2(hpull, nPars, excludeZeros = True, dataHist = dhist)
         my_prob = ROOT.TMath.Prob(my_chi2, my_ndof)
@@ -543,6 +564,8 @@ def fitting_options():
     parser = optparse.OptionParser()
     parser.add_option("--mjj_min", type=float, default=-1.0,
                       help="Minimum mjj for the fit")
+    parser.add_option("--mult_min", type=float, default=0.0,
+                      help="Minimum mjj multiplier for the fit")
     parser.add_option("--mjj_max", type=float, default=-1.0,
                       help="Maximum mjj for the fit")
     parser.add_option("--sig_norm", type=float, default=1.0,

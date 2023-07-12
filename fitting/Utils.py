@@ -167,6 +167,58 @@ def get_pull_hist(model, frame, central, curve,  hresid, fit_hist, bins):
 
 def PlotFitResults(frame,fitErrs,nPars,pulls,data_name,pdf_names,chi2,ndof,canvname, plot_dir, has_sig = False, draw_sig = False, plot_label = "", ratio_unc = None):
 
+    print('PlotFitResults fitErrs =',fitErrs)
+    extraplotting = False
+    if(extraplotting):
+        #binsx = [1460, 1530, 1607, 1687, 1770, 1856, 1945, 2037, 2132, 2231, 2332, 2438,
+        binsx = [2037, 2132, 2231, 2332, 2438,
+                 2546, 2659, 2775, 2895, 3019, 3147, 3279, 3416, 3558, 3704, 3854,
+                 4010, 4171, 4337, 4509, 4700, 4900,  5100, 5300, 5500, 5800,
+                 6100, 6400, 6800]
+        #f = h5py.File("Mar30_investigations_dataSB_WpAxis/BKG_Template_singleBin_req300_2600.h5", "r")
+        f = h5py.File("BKG_Template_singleBin_req300_2600.h5", "r")
+        mjj = np.asarray(f['mjj'])
+        mj1 = np.asarray(f['mj1'])
+        mj2 = np.asarray(f['mj2'])
+        squarebool1 = np.logical_and((mj1>280) & (mj1<340), (mj2>260) & (mj2<320))
+        squarebool2 = (mj1>160) & (mj1<200)
+        mjj_maskbox = mjj[squarebool1]
+        mjj_masktop = mjj[squarebool2]
+        mjj_others = mjj[np.logical_not(np.logical_or(squarebool1,squarebool2))]
+        allhist = ROOT.TH1F("all mjj", "all mjj", len(binsx) -1, array('d', binsx))
+        boxhist = ROOT.TH1F("mjj in box", "mjj in box", len(binsx) -1, array('d', binsx))
+        boxhist_ratio = ROOT.TH1F("mjj in box ratio", "mjj in box ratio", len(binsx) -1, array('d', binsx))
+        tophist = ROOT.TH1F("mjj in top", "mjj in top", len(binsx) -1, array('d', binsx))
+        tophist_ratio = ROOT.TH1F("mjj in top ratio", "mjj in top ratio", len(binsx) -1, array('d', binsx))
+        othershist = ROOT.TH1F("mjj elsewhere", "mjj elsewhere", len(binsx) -1, array('d', binsx))
+        for m in mjj[(mjj>2037)]:
+            allhist.Fill(m)
+        for m in mjj_maskbox:
+            boxhist.Fill(m)
+        for m in mjj_masktop:
+            tophist.Fill(m)
+        for m in mjj_others:
+            othershist.Fill(m)
+
+        for bx in range(len(binsx)):
+            if(allhist.GetBinContent(bx+1) > 0):
+                boxhist_ratio.SetBinContent(bx+1, 10.*boxhist.GetBinContent(bx+1)/allhist.GetBinContent(bx+1))
+                tophist_ratio.SetBinContent(bx+1, 10.*tophist.GetBinContent(bx+1)/allhist.GetBinContent(bx+1))
+
+
+        boxhist.SetLineColor(ROOT.kRed)
+        tophist.SetLineColor(ROOT.kCyan)
+        othershist.SetLineColor(ROOT.kOrange)
+        boxhist_ratio.SetLineColor(ROOT.kRed)
+        tophist_ratio.SetLineColor(ROOT.kCyan)
+
+        boxhist.SetLineWidth(2)
+        tophist.SetLineWidth(2)
+        othershist.SetLineWidth(2)
+        boxhist_ratio.SetLineWidth(2)
+        tophist_ratio.SetLineWidth(2)
+    
+
     c1 =ROOT.TCanvas("c1","",800,800)
     c1.SetLogy()
     c1.Divide(1,2,0,0,0)
@@ -189,11 +241,18 @@ def PlotFitResults(frame,fitErrs,nPars,pulls,data_name,pdf_names,chi2,ndof,canvn
     frame.GetYaxis().SetTitleOffset(0.98)
     frame.SetMinimum(0.2)
     frame.SetMaximum(1E7)
+    #frame.SetMaximum(1E3)
     frame.SetName("mjjFit")
     frame.GetYaxis().SetTitle("Events / 100 GeV")
     frame.SetTitle("")
     frame.Draw()
-        
+    
+    if(extraplotting):
+        boxhist.Draw("same")
+        tophist.Draw("same")
+        othershist.Draw("same")
+    
+
     legend = ROOT.TLegend(0.45097293,0.54183362,0.6681766,0.779833)
     legend2 = ROOT.TLegend(0.45097293,0.54183362,0.6681766,0.779833)
     legend.SetTextSize(0.046)
@@ -238,6 +297,12 @@ def PlotFitResults(frame,fitErrs,nPars,pulls,data_name,pdf_names,chi2,ndof,canvn
         legend2.AddEntry("","","")
         legend2.AddEntry("","","")
 
+    
+    if(extraplotting):
+        legend.AddEntry(boxhist,"Events in high mj box","l")
+        legend.AddEntry(tophist,"Events with mj1 near top mass","l")
+        legend.AddEntry(othershist,"All other events","l")
+    
 
     legend2.Draw("same")
     legend.Draw("same")
@@ -288,6 +353,9 @@ def PlotFitResults(frame,fitErrs,nPars,pulls,data_name,pdf_names,chi2,ndof,canvn
     pulls.GetXaxis().SetNdivisions(906)
     pulls.GetYaxis().SetNdivisions(305)
     pulls.Draw("same hist")
+    if(extraplotting):
+        boxhist_ratio.Draw("same,l")
+        tophist_ratio.Draw("same,l")
     line = ROOT.TLine(frame.GetXaxis().GetXmin() , 0 , frame.GetXaxis().GetXmax(),0)
     line.Draw("same")
     c1.Update()
@@ -326,7 +394,8 @@ def print_roohist(h):
 
 
 def calculateChi2(g_pulls, nPars, ranges = None, excludeZeros = True, dataHist = None):
-     
+    
+    print('calculating chi2')
     NumberOfVarBins = 0
     NumberOfObservations_VarBin = 0
     chi2_VarBin = 0.
@@ -350,7 +419,7 @@ def calculateChi2(g_pulls, nPars, ranges = None, excludeZeros = True, dataHist =
         g_pulls.GetPoint(p, a_x, a_val)
         x = a_x[0]
         pull = a_val[0]
-
+        print('p',p,'pull=',pull)
 
         add = True
         if(ranges is not None and len(ranges) > 0):
@@ -640,7 +709,26 @@ def checkSBFit(filename,label,bins,plotname, nPars, plot_dir = "", draw_sig = Tr
     #hresid_norm.Print("range")
 
 
+    a_x = array('d', [0.])
+    a_val = array('d', [0.])
+    a_data = array('d', [0.])
+    for p in range (0,hresid.GetN()):
+        hresid.GetPoint(p, a_x, a_val)
+        x = a_x[0]
+        pull = a_val[0]
+        print('p',p,'sig resid=',pull)
 
+    #a_x = array('d', [0.])
+    #a_val = array('d', [0.])
+    #a_data = array('d', [0.])
+    #for p in range (0,hresid_norm.GetNBins()):
+    for p in range (0,len(bins)):
+        #hresid_norm.GetPoint(p, a_x, a_val)
+        #x = a_x[0]
+        #pull = a_val[0]
+        #print('p',p,'sig resid (NORM)=',pull)
+        print('p',p,'sig resid (NORM)=',hresid_norm.GetBinContent(p))
+        
 
     chi2, ndof = calculateChi2(hpull, nPars + 1, excludeZeros = True, dataHist = dhist)
 
