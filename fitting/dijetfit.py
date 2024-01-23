@@ -142,14 +142,21 @@ def dijetfit(options):
 
 
     binslow = 0
+    binshigh = 0
     for mb in binsx:
         #if(mb < 0.5*options.mass):# or mb<2000):
         #if(mb < 0.6*options.mass):# or mb<2000):
         #if(mb < 0.6*options.mass):# or mb<2000):
-        if(mb < options.mult_min*options.mass):# or mb<2000):
+        
+        #if(mb < options.mult_min*options.mass):# or mb<2000):
+        if(mb < options.mult_min):# or mb<2000):
             binslow+=1
+        if(mb > options.mult_max):# or mb<2000):
+            binshigh+=1
     for bl in range(binslow):
         binsx.pop(0)
+    for bh in range(binshigh):
+        binsx.pop(-1)
 
     if(options.mjj_max < 0. and options.rebin): 
         options.mjj_max = get_mjj_max(options.inputFile) + 5.0
@@ -301,7 +308,8 @@ def dijetfit(options):
         model.plotOn(frame, ROOT.RooFit.LineColor(ROOT.kRed + 1), ROOT.RooFit.Name(model_name),  fit_norm)
         
 
-        useBinAverage = True
+        #useBinAverage = True
+        useBinAverage = False
         hpull = frame.pullHist(data_name, model_name, useBinAverage)
         hresid = frame.residHist(data_name, model_name, False, useBinAverage)
         dhist = ROOT.RooHist(frame.findObject(data_name, ROOT.RooHist.Class()))
@@ -557,6 +565,7 @@ def dijetfit(options):
     print("Expected was %.3f (%.1f events)" % (exp_limit, exp_limit*sig_norm))
     print("Expected range %.1f-%.1f (one sigma), %.1f-%.1f (two sigma)" % (exp_low * sig_norm, exp_high*sig_norm, exp_two_low * sig_norm, exp_two_high * sig_norm))
 
+
     f_pval = ROOT.TFile(f_pval_name, "READ")
     res3 = f_pval.Get("limit")
     res3.GetEntry(0)
@@ -608,8 +617,10 @@ def dijetfit(options):
     results['exp_lim_2sig_high'] = exp_two_high* sig_norm
     results['sig_norm_unc'] = options.sig_norm_unc
     results['mass'] = options.mass
-    results['mjj_min'] = options.mjj_min
-    results['mjj_max'] = options.mjj_max
+    #results['mjj_min'] = options.mjj_min
+    #results['mjj_max'] = options.mjj_max
+    results['mjj_min'] = options.mult_min
+    results['mjj_max'] = options.mult_max
     results['script_options'] = vars(options)
 
     print("Saving fit results to %s" % plot_dir + "fit_results_{}.pkl".format(options.mass))
@@ -634,6 +645,8 @@ def fitting_options():
                       help="Minimum mjj for the fit")
     parser.add_option("--mult_min", type=float, default=0.0,
                       help="Minimum mjj multiplier for the fit")
+    parser.add_option("--mult_max", type=float, default=7000.0,
+                      help="Maximum mjj multiplier for the fit")
     parser.add_option("--mjj_max", type=float, default=-1.0,
                       help="Maximum mjj for the fit")
     parser.add_option("--sig_norm", type=float, default=1680.0,
